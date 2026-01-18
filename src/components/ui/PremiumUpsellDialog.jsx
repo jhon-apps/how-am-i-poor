@@ -2,18 +2,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Lock, Search, CalendarClock, FileSpreadsheet, BadgeCheck } from "lucide-react"
 
-export default function PremiumUpsellDialog({
-                                                open,
-                                                onClose,
-                                                onConfirm,
-                                                reason = "premium", // "search" | "history" | "premium"
-                                            }) {
+export default function PremiumUpsellDialog({ open, onClose, onConfirm, reason = "premium" }) {
     const reasonTitle =
-        reason === "search"
-            ? "Ricerca movimenti"
-            : reason === "history"
-                ? "Storico completo"
-                : "Premium"
+        reason === "search" ? "Ricerca movimenti" : reason === "history" ? "Storico completo" : "Premium"
 
     return (
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -29,12 +20,8 @@ export default function PremiumUpsellDialog({
                                 <Lock className="h-4 w-4 text-slate-100" />
                             </div>
                             <div>
-                                <p className="text-sm font-semibold text-slate-100">
-                                    Funzione bloccata: {reasonTitle}
-                                </p>
-                                <p className="mt-1 text-sm text-slate-300">
-                                    Meno blur. Più verità. Zero pubblicità.
-                                </p>
+                                <p className="text-sm font-semibold text-slate-100">Funzione bloccata: {reasonTitle}</p>
+                                <p className="mt-1 text-sm text-slate-300">Meno blur. Più verità. Zero pubblicità.</p>
                             </div>
                         </div>
                     </div>
@@ -70,17 +57,12 @@ export default function PremiumUpsellDialog({
                         <Button variant="secondary" onClick={onClose}>
                             Non ora
                         </Button>
-                        <Button
-                            onClick={onConfirm}
-                            className="bg-slate-100 text-slate-900 hover:bg-white"
-                        >
+                        <Button onClick={onConfirm} className="bg-slate-100 text-slate-900 hover:bg-white">
                             Sblocca Premium
                         </Button>
                     </div>
 
-                    <p className="text-xs text-slate-500">
-                        Nota: al momento è una simulazione (billing verrà collegato più avanti).
-                    </p>
+                    <p className="text-xs text-slate-500">Nota: simulazione. Billing reale in arrivo.</p>
                 </div>
             </DialogContent>
         </Dialog>

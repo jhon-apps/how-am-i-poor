@@ -13,6 +13,8 @@ import ResetConfirmDialog from "@/components/ui/ResetConfirmDialog"
 import UndoToast from "@/components/ui/UndoToast"
 import PremiumUpsellDialog from "@/components/ui/PremiumUpsellDialog"
 
+import PremiumHub from "@/components/premium/PremiumHub.jsx"
+
 import AdSlot from "@/components/ads/AdSlot"
 
 import useTransactions from "@/hooks/useTransactions"
@@ -25,8 +27,10 @@ function formatEUR(n) {
 export default function Home() {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingTx, setEditingTx] = useState(null)
+
     const [showReset, setShowReset] = useState(false)
 
+    // chart view toggle
     const [leftView, setLeftView] = useState("chart") // "chart" | "list"
 
     // undo
@@ -34,9 +38,10 @@ export default function Home() {
     const [lastDeleted, setLastDeleted] = useState(null)
     const [undoTimer, setUndoTimer] = useState(null)
 
-    // premium modal
-    const [premiumOpen, setPremiumOpen] = useState(false)
+    // premium
+    const [premiumUpsellOpen, setPremiumUpsellOpen] = useState(false)
     const [premiumReason, setPremiumReason] = useState("premium")
+    const [premiumHubOpen, setPremiumHubOpen] = useState(false)
 
     const { isPremium, enablePremium, disablePremium } = usePremium()
 
@@ -78,6 +83,11 @@ export default function Home() {
         }
     }, [undoTimer])
 
+    const openPremium = (reason) => {
+        setPremiumReason(reason)
+        setPremiumUpsellOpen(true)
+    }
+
     const handleDelete = (id) => {
         const tx = transactions.find((t) => t.id === id)
         if (!tx) return
@@ -104,11 +114,6 @@ export default function Home() {
         setLastDeleted(null)
     }
 
-    const openPremium = (reason) => {
-        setPremiumReason(reason)
-        setPremiumOpen(true)
-    }
-
     return (
         <div className="min-h-screen text-slate-50 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
             {/* Top bar */}
@@ -118,7 +123,7 @@ export default function Home() {
                         <h1 className="text-xl font-extrabold tracking-tight">HOW AM I POOR</h1>
                         <p className="mt-1 text-sm text-slate-400">I miei conti • local storage • giudizio quotidiano</p>
 
-                        {/* DEBUG toggle (da togliere quando colleghi billing) */}
+                        {/* DEBUG toggle (toglieremo quando colleghi Billing) */}
                         <div className="mt-2 flex items-center gap-2">
                             <button
                                 className="text-xs text-slate-500 hover:text-slate-300 underline"
@@ -130,6 +135,15 @@ export default function Home() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <Button
+                            variant="ghost"
+                            className="h-11 rounded-xl"
+                            onClick={() => setPremiumHubOpen(true)}
+                            title="Premium"
+                        >
+                            Premium
+                        </Button>
+
                         <Button
                             onClick={() => {
                                 setEditingTx(null)
@@ -153,6 +167,7 @@ export default function Home() {
                 </div>
             </div>
 
+            {/* Content */}
             <main className="mx-auto max-w-6xl px-4 py-6 md:py-8 space-y-6 pb-16">
                 {isLoading ? (
                     <div className="space-y-6">
@@ -176,11 +191,11 @@ export default function Home() {
                             )}
                         </div>
 
-                        {/* ADS (free only) */}
+                        {/* ADS TOP (free only) */}
                         <AdSlot isPremium={isPremium} placement="home-top" />
 
                         <div className="grid lg:grid-cols-5 gap-6">
-                            {/* LEFT */}
+                            {/* LEFT: chart/list toggle */}
                             <div className="lg:col-span-2 min-h-[360px] space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div className="inline-flex rounded-2xl border border-slate-800 bg-slate-900/30 p-1">
@@ -210,7 +225,7 @@ export default function Home() {
                                 )}
                             </div>
 
-                            {/* RIGHT */}
+                            {/* RIGHT: premium search placeholder + list */}
                             <div className="lg:col-span-3 space-y-3">
                                 <div className="relative">
                                     <input
@@ -246,16 +261,20 @@ export default function Home() {
                             </div>
                         </div>
 
-                        {/* ADS (free only) */}
+                        {/* ADS BOTTOM (free only) */}
                         <AdSlot isPremium={isPremium} placement="home-bottom" />
 
-                        {!hasAny && (
-                            <div className="rounded-3xl border border-slate-800 bg-slate-900/30 p-5">
-                                <p className="text-sm text-slate-300">
-                                    Suggerimento: aggiungi 2–3 movimenti (una entrata e un paio di uscite) e la dashboard prende vita.
-                                </p>
-                            </div>
-                        )}
+                        {/* Privacy link in-app */}
+                        <footer className="mt-10 text-center text-xs text-slate-500">
+                            <a
+                                href="https://jhon-apps.github.io/how-am-i-poor/privacy.html"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline hover:text-slate-300"
+                            >
+                                Privacy Policy
+                            </a>
+                        </footer>
                     </>
                 )}
             </main>
@@ -299,15 +318,24 @@ export default function Home() {
                 }}
             />
 
-            {/* Premium upsell */}
+            {/* Premium upsell (from locks) */}
             <PremiumUpsellDialog
-                open={premiumOpen}
+                open={premiumUpsellOpen}
                 reason={premiumReason}
-                onClose={() => setPremiumOpen(false)}
+                onClose={() => setPremiumUpsellOpen(false)}
                 onConfirm={() => {
-                    enablePremium() // mock
-                    setPremiumOpen(false)
+                    // mock: attiva premium
+                    enablePremium()
+                    setPremiumUpsellOpen(false)
                 }}
+            />
+
+            {/* Premium hub (always accessible) */}
+            <PremiumHub
+                open={premiumHubOpen}
+                onClose={() => setPremiumHubOpen(false)}
+                isPremium={isPremium}
+                onSubscribe={() => enablePremium()} // mock
             />
 
             {/* FAB mobile */}
