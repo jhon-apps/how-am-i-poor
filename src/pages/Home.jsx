@@ -14,15 +14,19 @@ import UndoToast from "@/components/ui/UndoToast"
 import PremiumUpsellDialog from "@/components/ui/PremiumUpsellDialog"
 
 import PremiumHub from "@/components/premium/PremiumHub"
-
 import AdSlot from "@/components/ads/AdSlot"
 
 import useTransactions from "@/hooks/useTransactions"
 import usePremium from "@/hooks/usePremium"
 import useAdsConsent from "@/hooks/useAdsConsent"
+import useDebouncedValue from "@/hooks/useDebouncedValue"
 
 function formatEUR(n) {
     return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(Number(n) || 0)
+}
+
+function norm(s) {
+    return String(s || "").toLowerCase().trim()
 }
 
 export default function Home() {
@@ -42,6 +46,10 @@ export default function Home() {
     const [premiumUpsellOpen, setPremiumUpsellOpen] = useState(false)
     const [premiumReason, setPremiumReason] = useState("premium")
     const [premiumHubOpen, setPremiumHubOpen] = useState(false)
+
+    // search
+    const [query, setQuery] = useState("")
+    const debouncedQuery = useDebouncedValue(query, 200)
 
     const { isPremium, enablePremium } = usePremium()
     const { adsConsent } = useAdsConsent()
@@ -114,6 +122,19 @@ export default function Home() {
         setUndoOpen(false)
         setLastDeleted(null)
     }
+
+    // ✅ Premium search: filtra solo se premium e query non vuota
+    const filteredTransactions = useMemo(() => {
+        if (!isPremium) return transactions
+        const q = norm(debouncedQuery)
+        if (!q) return transactions
+
+        return transactions.filter((t) => {
+            const d = norm(t.description)
+            const c = norm(t.category)
+            return d.includes(q) || c.includes(q)
+        })
+    }, [transactions, isPremium, debouncedQuery])
 
     return (
         <div className="min-h-screen text-slate-50 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -205,10 +226,12 @@ export default function Home() {
                             </div>
 
                             <div className="lg:col-span-3 space-y-3">
+                                {/* Search */}
                                 <div className="relative">
                                     <input
-                                        value=""
-                                        readOnly
+                                        value={isPremium ? query : ""}
+                                        onChange={(e) => setQuery(e.target.value)}
+                                        readOnly={!isPremium}
                                         onClick={() => {
                                             if (!isPremium) openPremium("search")
                                         }}
@@ -227,7 +250,7 @@ export default function Home() {
                                 </div>
 
                                 <TransactionList
-                                    transactions={transactions}
+                                    transactions={filteredTransactions}
                                     onDelete={handleDelete}
                                     onEdit={(tx) => {
                                         setEditingTx(tx)
@@ -257,6 +280,7 @@ export default function Home() {
             </main>
 
             <AddTransactionModal
+                key={`${isModalOpen}-${editingTx?.id ?? "new"}`}
                 isOpen={isModalOpen}
                 transaction={editingTx}
                 recentCategories={recentCategories}
