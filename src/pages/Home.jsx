@@ -13,6 +13,8 @@ import ResetConfirmDialog from "@/components/ui/ResetConfirmDialog"
 import UndoToast from "@/components/ui/UndoToast"
 import PremiumUpsellDialog from "@/components/ui/PremiumUpsellDialog"
 
+import AdSlot from "@/components/ads/AdSlot"
+
 import useTransactions from "@/hooks/useTransactions"
 import usePremium from "@/hooks/usePremium"
 
@@ -25,10 +27,9 @@ export default function Home() {
     const [editingTx, setEditingTx] = useState(null)
     const [showReset, setShowReset] = useState(false)
 
-    // chart view toggle
     const [leftView, setLeftView] = useState("chart") // "chart" | "list"
 
-    // undo state
+    // undo
     const [undoOpen, setUndoOpen] = useState(false)
     const [lastDeleted, setLastDeleted] = useState(null)
     const [undoTimer, setUndoTimer] = useState(null)
@@ -152,7 +153,6 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* Content */}
             <main className="mx-auto max-w-6xl px-4 py-6 md:py-8 space-y-6 pb-16">
                 {isLoading ? (
                     <div className="space-y-6">
@@ -176,8 +176,11 @@ export default function Home() {
                             )}
                         </div>
 
+                        {/* ADS (free only) */}
+                        <AdSlot isPremium={isPremium} placement="home-top" />
+
                         <div className="grid lg:grid-cols-5 gap-6">
-                            {/* LEFT: chart/list toggle */}
+                            {/* LEFT */}
                             <div className="lg:col-span-2 min-h-[360px] space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div className="inline-flex rounded-2xl border border-slate-800 bg-slate-900/30 p-1">
@@ -207,7 +210,7 @@ export default function Home() {
                                 )}
                             </div>
 
-                            {/* RIGHT: premium search */}
+                            {/* RIGHT */}
                             <div className="lg:col-span-3 space-y-3">
                                 <div className="relative">
                                     <input
@@ -242,6 +245,9 @@ export default function Home() {
                                 />
                             </div>
                         </div>
+
+                        {/* ADS (free only) */}
+                        <AdSlot isPremium={isPremium} placement="home-bottom" />
 
                         {!hasAny && (
                             <div className="rounded-3xl border border-slate-800 bg-slate-900/30 p-5">
@@ -299,8 +305,7 @@ export default function Home() {
                 reason={premiumReason}
                 onClose={() => setPremiumOpen(false)}
                 onConfirm={() => {
-                    // per ora: attiva premium mock
-                    enablePremium()
+                    enablePremium() // mock
                     setPremiumOpen(false)
                 }}
             />
