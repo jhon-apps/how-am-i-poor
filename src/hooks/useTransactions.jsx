@@ -1,14 +1,21 @@
 import { useEffect, useMemo, useState } from "react"
 import { loadTransactions, saveTransactions } from "@/entities/storage/transactionsStorage"
-import { DEFAULT_CATEGORY, isValidCategory } from "@/entities/categories"
+import { isValidCategory, isCategoryAllowedForType } from "@/entities/categories"
 
 function sortByDateDesc(list) {
     return [...list].sort((a, b) => new Date(b.date) - new Date(a.date))
 }
 
 function normalizeTx(t) {
-    const category = isValidCategory(t?.category) ? t.category : DEFAULT_CATEGORY
-    return { ...t, category }
+    const type = t?.type === "entrata" || t?.type === "uscita" ? t.type : "uscita"
+    const rawAmount = Number(t?.amount)
+    const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0
+
+    const cat = t?.category
+    const category =
+        isValidCategory(cat) && isCategoryAllowedForType(cat, type) ? cat : "altro"
+
+    return { ...t, type, amount, category }
 }
 
 export default function useTransactions() {
@@ -37,17 +44,15 @@ export default function useTransactions() {
             amount: Math.abs(Number(updatedTx.amount)),
         })
 
-        setTransactions((prev) => prev.map((t) => (t.id === tx.id ? { ...t, ...tx } : t)))
+        setTransactions((prev) =>
+            prev.map((t) => (t.id === tx.id ? { ...t, ...tx } : t))
+        )
     }
 
-    const remove = (id) => {
-        setTransactions((prev) => prev.filter((t) => t.id !== id))
-    }
-
-    // usato dall'Undo: reinserisce una transazione già esistente (stesso id)
+    const remove = (id) => setTransactions((prev) => prev.filter((t) => t.id !== id))
     const restore = (tx) => {
         if (!tx?.id) return
-        const normalized = normalizeTx({ ...tx, amount: Math.abs(Number(tx.amount)) })
+        const normalized = normalizeTx(tx)
         setTransactions((prev) => sortByDateDesc([normalized, ...prev]))
     }
 

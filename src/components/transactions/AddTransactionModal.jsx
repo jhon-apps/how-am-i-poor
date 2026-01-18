@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Plus, Minus } from "lucide-react"
-import { CATEGORIES, DEFAULT_CATEGORY } from "@/entities/categories"
+import {
+    getCategoriesByType,
+    getDefaultCategoryByType,
+    isCategoryAllowedForType,
+    getCategoryLabel,
+} from "@/entities/categories"
 
 export default function AddTransactionModal({
                                                 isOpen,
@@ -12,47 +17,79 @@ export default function AddTransactionModal({
                                                 isLoading,
                                                 recentCategories = [],
                                             }) {
-    const [type, setType] = useState("uscita")
+    const initialType = transaction?.type ?? "uscita"
+
+    const [type, setType] = useState(initialType)
     const [error, setError] = useState("")
+
     const [formData, setFormData] = useState({
         description: "",
         amount: "",
         date: new Date().toISOString().split("T")[0],
-        category: DEFAULT_CATEGORY,
+        category: getDefaultCategoryByType(initialType),
     })
 
+    // categorie disponibili in base al tipo
+    const categoriesForType = useMemo(() => getCategoriesByType(type), [type])
+
+    // pills recenti filtrate per tipo (così non vedi "stipendio" quando sei su uscita)
     const pills = useMemo(() => {
         const uniq = []
         for (const c of recentCategories) {
             if (!c) continue
+            if (!isCategoryAllowedForType(c, type)) continue
             if (!uniq.includes(c)) uniq.push(c)
             if (uniq.length >= 4) break
         }
-        // fallback se non ci sono recenti
-        if (!uniq.length) return ["cibo", "casa", "trasporti", "altro"].slice(0, 4)
-        return uniq
-    }, [recentCategories])
 
+        // fallback se non ci sono recenti coerenti
+        if (!uniq.length) {
+            return type === "entrata"
+                ? ["stipendio", "entrate_extra", "bonus", "altro"]
+                : ["cibo", "casa", "trasporti", "altro"]
+        }
+
+        return uniq
+    }, [recentCategories, type])
+
+    // quando apri/chiudi o cambi transaction, reset form
     useEffect(() => {
         setError("")
         if (transaction) {
-            setType(transaction.type)
+            const txType = transaction.type ?? "uscita"
+            setType(txType)
+
+            const txCat = transaction.category
+            const safeCat = isCategoryAllowedForType(txCat, txType)
+                ? txCat
+                : getDefaultCategoryByType(txType)
+
             setFormData({
                 description: transaction.description ?? "",
                 amount: transaction.amount ?? "",
                 date: (transaction.date ?? new Date().toISOString()).slice(0, 10),
-                category: transaction.category ?? DEFAULT_CATEGORY,
+                category: safeCat,
             })
         } else {
-            setType("uscita")
+            const defaultType = "uscita"
+            setType(defaultType)
             setFormData({
                 description: "",
                 amount: "",
                 date: new Date().toISOString().split("T")[0],
-                category: DEFAULT_CATEGORY,
+                category: getDefaultCategoryByType(defaultType),
             })
         }
     }, [transaction, isOpen])
+
+    // quando cambia tipo, forziamo una categoria coerente
+    useEffect(() => {
+        setFormData((p) => {
+            const current = p.category
+            if (isCategoryAllowedForType(current, type)) return p
+            return { ...p, category: getDefaultCategoryByType(type) }
+        })
+    }, [type])
 
     const handleSubmit = (e) => {
         e.preventDefault()
@@ -71,6 +108,10 @@ export default function AddTransactionModal({
         }
         if (!formData.date) {
             setError("Seleziona una data valida.")
+            return
+        }
+        if (!isCategoryAllowedForType(formData.category, type)) {
+            setError("Categoria non valida per questo tipo.")
             return
         }
 
@@ -97,7 +138,9 @@ export default function AddTransactionModal({
                             type="button"
                             onClick={() => setType("uscita")}
                             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition ${
-                                type === "uscita" ? "bg-white dark:bg-slate-900 text-rose-500" : "text-slate-400"
+                                type === "uscita"
+                                    ? "bg-white dark:bg-slate-900 text-rose-500"
+                                    : "text-slate-400"
                             }`}
                         >
                             <Minus size={16} /> Uscita
@@ -107,7 +150,9 @@ export default function AddTransactionModal({
                             type="button"
                             onClick={() => setType("entrata")}
                             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition ${
-                                type === "entrata" ? "bg-white dark:bg-slate-900 text-emerald-500" : "text-slate-400"
+                                type === "entrata"
+                                    ? "bg-white dark:bg-slate-900 text-emerald-500"
+                                    : "text-slate-400"
                             }`}
                         >
                             <Plus size={16} /> Entrata
@@ -127,7 +172,7 @@ export default function AddTransactionModal({
                                         : "bg-slate-900/40 text-slate-200 border-slate-800 hover:bg-slate-900"
                                 }`}
                             >
-                                {CATEGORIES.find((c) => c.key === k)?.label ?? k}
+                                {getCategoryLabel(k)}
                             </button>
                         ))}
                     </div>
@@ -159,13 +204,13 @@ export default function AddTransactionModal({
                         onChange={(e) => setFormData((p) => ({ ...p, date: e.target.value }))}
                     />
 
-                    {/* categoria select */}
+                    {/* categoria select (dinamica per tipo) */}
                     <select
                         className="w-full rounded-xl bg-slate-900 border border-slate-800 px-3 py-2"
                         value={formData.category}
                         onChange={(e) => setFormData((p) => ({ ...p, category: e.target.value }))}
                     >
-                        {CATEGORIES.map((c) => (
+                        {categoriesForType.map((c) => (
                             <option key={c.key} value={c.key}>
                                 {c.label}
                             </option>
