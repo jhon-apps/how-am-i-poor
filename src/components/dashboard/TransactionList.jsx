@@ -1,6 +1,6 @@
 import TransactionItem from "./TransactionItem"
 
-export default function TransactionList({ transactions = [], onDelete, onEdit, isPremium }) {
+export default function TransactionList({ transactions = [], onDelete, onEdit, isPremium, onPremium }) {
     if (!transactions.length) {
         return <p className="text-slate-400 text-sm">Nessun movimento</p>
     }
@@ -14,6 +14,7 @@ export default function TransactionList({ transactions = [], onDelete, onEdit, i
                     onDelete={onDelete}
                     onEdit={onEdit}
                     isPremium={isPremium}
+                    onPremium={onPremium}
                 />
             ))}
         </div>

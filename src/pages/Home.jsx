@@ -11,9 +11,10 @@ import AddTransactionModal from "@/components/transactions/AddTransactionModal"
 
 import ResetConfirmDialog from "@/components/ui/ResetConfirmDialog"
 import UndoToast from "@/components/ui/UndoToast"
+import PremiumUpsellDialog from "@/components/ui/PremiumUpsellDialog"
 
 import useTransactions from "@/hooks/useTransactions"
-import { IS_PREMIUM } from "@/entities/premium"
+import usePremium from "@/hooks/usePremium"
 
 function formatEUR(n) {
     return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(Number(n) || 0)
@@ -32,14 +33,17 @@ export default function Home() {
     const [lastDeleted, setLastDeleted] = useState(null)
     const [undoTimer, setUndoTimer] = useState(null)
 
-    const isPremium = IS_PREMIUM
+    // premium modal
+    const [premiumOpen, setPremiumOpen] = useState(false)
+    const [premiumReason, setPremiumReason] = useState("premium")
+
+    const { isPremium, enablePremium, disablePremium } = usePremium()
 
     const { transactions, isLoading, add, update, remove, restore, reset, totals } = useTransactions()
     const { income, expenses, balance } = totals
 
     const hasAny = useMemo(() => transactions.length > 0, [transactions])
 
-    // recent categories (for quick pills)
     const recentCategories = useMemo(() => {
         const uniq = []
         for (const t of transactions) {
@@ -99,6 +103,11 @@ export default function Home() {
         setLastDeleted(null)
     }
 
+    const openPremium = (reason) => {
+        setPremiumReason(reason)
+        setPremiumOpen(true)
+    }
+
     return (
         <div className="min-h-screen text-slate-50 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
             {/* Top bar */}
@@ -107,6 +116,16 @@ export default function Home() {
                     <div>
                         <h1 className="text-xl font-extrabold tracking-tight">HOW AM I POOR</h1>
                         <p className="mt-1 text-sm text-slate-400">I miei conti • local storage • giudizio quotidiano</p>
+
+                        {/* DEBUG toggle (da togliere quando colleghi billing) */}
+                        <div className="mt-2 flex items-center gap-2">
+                            <button
+                                className="text-xs text-slate-500 hover:text-slate-300 underline"
+                                onClick={() => (isPremium ? disablePremium() : enablePremium())}
+                            >
+                                {isPremium ? "Debug: disattiva Premium" : "Debug: attiva Premium"}
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -188,20 +207,24 @@ export default function Home() {
                                 )}
                             </div>
 
-                            {/* RIGHT: premium search placeholder + list */}
+                            {/* RIGHT: premium search */}
                             <div className="lg:col-span-3 space-y-3">
                                 <div className="relative">
                                     <input
-                                        disabled={!isPremium}
+                                        value=""
+                                        readOnly
+                                        onClick={() => {
+                                            if (!isPremium) openPremium("search")
+                                        }}
                                         placeholder={isPremium ? "Cerca movimenti..." : "Cerca movimenti (Premium)"}
                                         className={`w-full rounded-2xl border px-3 py-2 text-sm ${
                                             isPremium
                                                 ? "bg-slate-900 border-slate-800 text-slate-100"
-                                                : "bg-slate-900/40 border-slate-800 text-slate-400 cursor-not-allowed pr-10"
+                                                : "bg-slate-900/40 border-slate-800 text-slate-400 cursor-pointer pr-10"
                                         }`}
                                     />
                                     {!isPremium && (
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                                             <Lock className="h-4 w-4" />
                                         </div>
                                     )}
@@ -215,6 +238,7 @@ export default function Home() {
                                         setIsModalOpen(true)
                                     }}
                                     isPremium={isPremium}
+                                    onPremium={openPremium}
                                 />
                             </div>
                         </div>
@@ -230,7 +254,7 @@ export default function Home() {
                 )}
             </main>
 
-            {/* Modal */}
+            {/* Modal add/edit */}
             <AddTransactionModal
                 isOpen={isModalOpen}
                 transaction={editingTx}
@@ -266,6 +290,18 @@ export default function Home() {
                     if (undoTimer) clearTimeout(undoTimer)
                     setUndoOpen(false)
                     setLastDeleted(null)
+                }}
+            />
+
+            {/* Premium upsell */}
+            <PremiumUpsellDialog
+                open={premiumOpen}
+                reason={premiumReason}
+                onClose={() => setPremiumOpen(false)}
+                onConfirm={() => {
+                    // per ora: attiva premium mock
+                    enablePremium()
+                    setPremiumOpen(false)
                 }}
             />
 

@@ -1,7 +1,3 @@
-// Premium flag (per ora base = false).
-// Quando farai il premium vero, qui agganci purchase / entitlement.
-export const IS_PREMIUM = false
-
 export function isOlderThanDays(dateISO, days) {
     const d = new Date(dateISO)
     if (Number.isNaN(d.getTime())) return false
@@ -10,7 +6,7 @@ export function isOlderThanDays(dateISO, days) {
     return diffDays > days
 }
 
-export function isLockedTransaction(tx, isPremium = IS_PREMIUM) {
+export function isLockedTransaction(tx, isPremium) {
     if (isPremium) return false
     return isOlderThanDays(tx?.date, 30)
 }
