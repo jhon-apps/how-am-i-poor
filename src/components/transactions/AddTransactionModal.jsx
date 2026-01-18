@@ -31,6 +31,35 @@ function buildInitialState(transaction) {
     }
 }
 
+// ✅ Parser robusto per importi IT/EN:
+// - "10,50" -> 10.5
+// - "  € 1.234,56 " -> 1234.56
+// - "1 234,56" -> 1234.56
+function parseAmount(raw) {
+    if (raw == null) return NaN
+    let s = String(raw).trim()
+
+    // rimuovi simboli valuta e spazi
+    s = s.replace(/\s/g, "")
+    s = s.replace(/[€$£]/g, "")
+
+    // se contiene sia "." che ",", assumiamo: "." migliaia e "," decimali (tipico IT)
+    if (s.includes(".") && s.includes(",")) {
+        s = s.replace(/\./g, "") // togli migliaia
+        s = s.replace(",", ".")  // decimali
+        return Number(s)
+    }
+
+    // se contiene solo ",": è separatore decimale
+    if (s.includes(",") && !s.includes(".")) {
+        s = s.replace(",", ".")
+        return Number(s)
+    }
+
+    // solo "." (standard)
+    return Number(s)
+}
+
 export default function AddTransactionModal({
                                                 isOpen,
                                                 onClose,
@@ -76,14 +105,15 @@ export default function AddTransactionModal({
         setError("")
 
         const desc = String(formData.description || "").trim()
-        const amount = Math.abs(Number(formData.amount))
+        const parsed = parseAmount(formData.amount)
+        const amount = Math.abs(parsed)
 
         if (desc.length < 2) {
             setError("Descrizione troppo corta.")
             return
         }
         if (!Number.isFinite(amount) || amount <= 0) {
-            setError("Inserisci un importo valido (> 0).")
+            setError("Inserisci un importo valido (> 0). Esempio: 10,50")
             return
         }
         if (!formData.date) {
@@ -171,10 +201,12 @@ export default function AddTransactionModal({
                         required
                     />
 
+                    {/* 🔥 qui ora puoi scrivere anche 10,50 */}
                     <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         className="w-full rounded-xl bg-slate-900 border border-slate-800 px-3 py-2"
-                        placeholder="Importo"
+                        placeholder="Importo (es. 10,50)"
                         value={formData.amount}
                         onChange={(e) => {
                             setError("")
