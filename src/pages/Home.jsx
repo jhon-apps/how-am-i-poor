@@ -29,13 +29,22 @@ function norm(s) {
     return String(s || "").toLowerCase().trim()
 }
 
+function isWithinLastDays(dateISO, days) {
+    const d = new Date(dateISO)
+    if (Number.isNaN(d.getTime())) return false
+    const diff = Date.now() - d.getTime()
+    return diff <= days * 24 * 60 * 60 * 1000
+}
+
 export default function Home() {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingTx, setEditingTx] = useState(null)
 
     const [showReset, setShowReset] = useState(false)
 
+    // Left panel toggles
     const [leftView, setLeftView] = useState("chart") // "chart" | "list"
+    const [chartRange, setChartRange] = useState("30d") // "30d" | "all"
 
     // undo
     const [undoOpen, setUndoOpen] = useState(false)
@@ -47,7 +56,7 @@ export default function Home() {
     const [premiumReason, setPremiumReason] = useState("premium")
     const [premiumHubOpen, setPremiumHubOpen] = useState(false)
 
-    // search
+    // search (premium)
     const [query, setQuery] = useState("")
     const debouncedQuery = useDebouncedValue(query, 200)
 
@@ -122,6 +131,14 @@ export default function Home() {
         setUndoOpen(false)
         setLastDeleted(null)
     }
+
+    // ✅ RANGE grafico/lista (free: sempre 30d, premium: 30d o all)
+    const effectiveRange = isPremium ? chartRange : "30d"
+
+    const chartTransactions = useMemo(() => {
+        if (effectiveRange === "all") return transactions
+        return transactions.filter((t) => isWithinLastDays(t.date, 30))
+    }, [transactions, effectiveRange])
 
     // ✅ Premium search: filtra solo se premium e query non vuota
     const filteredTransactions = useMemo(() => {
@@ -200,7 +217,9 @@ export default function Home() {
                         <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-top" />
 
                         <div className="grid lg:grid-cols-5 gap-6">
+                            {/* LEFT */}
                             <div className="lg:col-span-2 min-h-[360px] space-y-3">
+                                {/* Toggle chart/list */}
                                 <div className="flex items-center justify-between">
                                     <div className="inline-flex rounded-2xl border border-slate-800 bg-slate-900/30 p-1">
                                         <button
@@ -220,11 +239,47 @@ export default function Home() {
                                             Elenco
                                         </button>
                                     </div>
+
+                                    {/* Range toggle (locked for free) */}
+                                    <div className="inline-flex rounded-2xl border border-slate-800 bg-slate-900/30 p-1">
+                                        <button
+                                            onClick={() => setChartRange("30d")}
+                                            className={`px-3 py-2 text-sm rounded-xl transition ${
+                                                effectiveRange === "30d" ? "bg-slate-100 text-slate-900" : "text-slate-200 hover:bg-slate-900"
+                                            }`}
+                                            title="Ultimi 30 giorni"
+                                        >
+                                            30 giorni
+                                        </button>
+
+                                        <button
+                                            onClick={() => {
+                                                if (!isPremium) {
+                                                    openPremium("history")
+                                                    return
+                                                }
+                                                setChartRange("all")
+                                            }}
+                                            className={`px-3 py-2 text-sm rounded-xl transition flex items-center gap-2 ${
+                                                effectiveRange === "all" ? "bg-slate-100 text-slate-900" : "text-slate-200 hover:bg-slate-900"
+                                            }`}
+                                            title={isPremium ? "Tutto" : "Tutto (Premium)"}
+                                        >
+                                            {!isPremium && <Lock className="h-3.5 w-3.5" />}
+                                            Tutto
+                                        </button>
+                                    </div>
                                 </div>
 
-                                {leftView === "chart" ? <ExpenseChart transactions={transactions} /> : <CategoryBreakdownList transactions={transactions} />}
+                                {/* Chart/List now uses chartTransactions */}
+                                {leftView === "chart" ? (
+                                    <ExpenseChart transactions={chartTransactions} />
+                                ) : (
+                                    <CategoryBreakdownList transactions={chartTransactions} />
+                                )}
                             </div>
 
+                            {/* RIGHT */}
                             <div className="lg:col-span-3 space-y-3">
                                 {/* Search */}
                                 <div className="relative">
