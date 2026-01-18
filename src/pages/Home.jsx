@@ -13,12 +13,13 @@ import ResetConfirmDialog from "@/components/ui/ResetConfirmDialog"
 import UndoToast from "@/components/ui/UndoToast"
 import PremiumUpsellDialog from "@/components/ui/PremiumUpsellDialog"
 
-import PremiumHub from "@/components/premium/PremiumHub.jsx"
+import PremiumHub from "@/components/premium/PremiumHub"
 
 import AdSlot from "@/components/ads/AdSlot"
 
 import useTransactions from "@/hooks/useTransactions"
 import usePremium from "@/hooks/usePremium"
+import useAdsConsent from "@/hooks/useAdsConsent"
 
 function formatEUR(n) {
     return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(Number(n) || 0)
@@ -30,7 +31,6 @@ export default function Home() {
 
     const [showReset, setShowReset] = useState(false)
 
-    // chart view toggle
     const [leftView, setLeftView] = useState("chart") // "chart" | "list"
 
     // undo
@@ -43,8 +43,9 @@ export default function Home() {
     const [premiumReason, setPremiumReason] = useState("premium")
     const [premiumHubOpen, setPremiumHubOpen] = useState(false)
 
-    // const { isPremium, enablePremium, disablePremium } = usePremium()
     const { isPremium, enablePremium } = usePremium()
+    const { adsConsent } = useAdsConsent()
+
     const { transactions, isLoading, add, update, remove, restore, reset, totals } = useTransactions()
     const { income, expenses, balance } = totals
 
@@ -122,25 +123,10 @@ export default function Home() {
                     <div>
                         <h1 className="text-xl font-extrabold tracking-tight">HOW AM I POOR</h1>
                         <p className="mt-1 text-sm text-slate-400">I miei conti • local storage • giudizio quotidiano</p>
-
-                        {/*/!* DEBUG toggle (toglieremo quando colleghi Billing) *!/*/}
-                        {/*<div className="mt-2 flex items-center gap-2">*/}
-                        {/*    <button*/}
-                        {/*        className="text-xs text-slate-500 hover:text-slate-300 underline"*/}
-                        {/*        onClick={() => (isPremium ? disablePremium() : enablePremium())}*/}
-                        {/*    >*/}
-                        {/*        {isPremium ? "Debug: disattiva Premium" : "Debug: attiva Premium"}*/}
-                        {/*    </button>*/}
-                        {/*</div>*/}
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            className="h-11 rounded-xl"
-                            onClick={() => setPremiumHubOpen(true)}
-                            title="Premium"
-                        >
+                        <Button variant="ghost" className="h-11 rounded-xl" onClick={() => setPremiumHubOpen(true)} title="Premium">
                             Premium
                         </Button>
 
@@ -167,7 +153,6 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* Content */}
             <main className="mx-auto max-w-6xl px-4 py-6 md:py-8 space-y-6 pb-16">
                 {isLoading ? (
                     <div className="space-y-6">
@@ -181,7 +166,6 @@ export default function Home() {
                     <>
                         <BalanceCard balance={balance} income={income} expenses={expenses} />
 
-                        {/* micro insight */}
                         <div className="rounded-3xl border border-slate-800 bg-slate-900/30 p-5">
                             <p className="text-sm text-slate-200">{insightText}</p>
                             {hasAny && (
@@ -191,11 +175,10 @@ export default function Home() {
                             )}
                         </div>
 
-                        {/* ADS TOP (free only) */}
-                        <AdSlot isPremium={isPremium} placement="home-top" />
+                        {/* ADS TOP */}
+                        <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-top" />
 
                         <div className="grid lg:grid-cols-5 gap-6">
-                            {/* LEFT: chart/list toggle */}
                             <div className="lg:col-span-2 min-h-[360px] space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div className="inline-flex rounded-2xl border border-slate-800 bg-slate-900/30 p-1">
@@ -218,14 +201,9 @@ export default function Home() {
                                     </div>
                                 </div>
 
-                                {leftView === "chart" ? (
-                                    <ExpenseChart transactions={transactions} />
-                                ) : (
-                                    <CategoryBreakdownList transactions={transactions} />
-                                )}
+                                {leftView === "chart" ? <ExpenseChart transactions={transactions} /> : <CategoryBreakdownList transactions={transactions} />}
                             </div>
 
-                            {/* RIGHT: premium search placeholder + list */}
                             <div className="lg:col-span-3 space-y-3">
                                 <div className="relative">
                                     <input
@@ -261,10 +239,9 @@ export default function Home() {
                             </div>
                         </div>
 
-                        {/* ADS BOTTOM (free only) */}
-                        <AdSlot isPremium={isPremium} placement="home-bottom" />
+                        {/* ADS BOTTOM */}
+                        <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-bottom" />
 
-                        {/* Privacy link in-app */}
                         <footer className="mt-10 text-center text-xs text-slate-500">
                             <a
                                 href="https://jhon-apps.github.io/how-am-i-poor/privacy.html"
@@ -279,7 +256,6 @@ export default function Home() {
                 )}
             </main>
 
-            {/* Modal add/edit */}
             <AddTransactionModal
                 isOpen={isModalOpen}
                 transaction={editingTx}
@@ -296,7 +272,6 @@ export default function Home() {
                 isLoading={false}
             />
 
-            {/* Reset confirm */}
             <ResetConfirmDialog
                 open={showReset}
                 onClose={() => setShowReset(false)}
@@ -306,7 +281,6 @@ export default function Home() {
                 }}
             />
 
-            {/* Undo toast */}
             <UndoToast
                 open={undoOpen}
                 message="Movimento eliminato."
@@ -318,27 +292,23 @@ export default function Home() {
                 }}
             />
 
-            {/* Premium upsell (from locks) */}
             <PremiumUpsellDialog
                 open={premiumUpsellOpen}
                 reason={premiumReason}
                 onClose={() => setPremiumUpsellOpen(false)}
                 onConfirm={() => {
-                    // mock: attiva premium
                     enablePremium()
                     setPremiumUpsellOpen(false)
                 }}
             />
 
-            {/* Premium hub (always accessible) */}
             <PremiumHub
                 open={premiumHubOpen}
                 onClose={() => setPremiumHubOpen(false)}
                 isPremium={isPremium}
-                onSubscribe={() => enablePremium()} // mock
+                onSubscribe={() => enablePremium()}
             />
 
-            {/* FAB mobile */}
             <motion.button
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
