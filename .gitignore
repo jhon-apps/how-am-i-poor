@@ -1,7 +1,18 @@
+# dependencies
 node_modules/
-.vite/
-.idea/
+
+# build
 dist/
-.DS_Store
+.vite/
+
+# IDE
+.idea/
+.vscode/
+
+# env
 .env
 .env.*
+
+# OS
+.DS_Store
+Thumbs.db
