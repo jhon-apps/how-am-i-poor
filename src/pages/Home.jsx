@@ -43,8 +43,8 @@ export default function Home() {
     const [premiumReason, setPremiumReason] = useState("premium")
     const [premiumHubOpen, setPremiumHubOpen] = useState(false)
 
-    const { isPremium, enablePremium, disablePremium } = usePremium()
-
+    // const { isPremium, enablePremium, disablePremium } = usePremium()
+    const { isPremium, enablePremium } = usePremium()
     const { transactions, isLoading, add, update, remove, restore, reset, totals } = useTransactions()
     const { income, expenses, balance } = totals
 
@@ -123,15 +123,15 @@ export default function Home() {
                         <h1 className="text-xl font-extrabold tracking-tight">HOW AM I POOR</h1>
                         <p className="mt-1 text-sm text-slate-400">I miei conti • local storage • giudizio quotidiano</p>
 
-                        {/* DEBUG toggle (toglieremo quando colleghi Billing) */}
-                        <div className="mt-2 flex items-center gap-2">
-                            <button
-                                className="text-xs text-slate-500 hover:text-slate-300 underline"
-                                onClick={() => (isPremium ? disablePremium() : enablePremium())}
-                            >
-                                {isPremium ? "Debug: disattiva Premium" : "Debug: attiva Premium"}
-                            </button>
-                        </div>
+                        {/*/!* DEBUG toggle (toglieremo quando colleghi Billing) *!/*/}
+                        {/*<div className="mt-2 flex items-center gap-2">*/}
+                        {/*    <button*/}
+                        {/*        className="text-xs text-slate-500 hover:text-slate-300 underline"*/}
+                        {/*        onClick={() => (isPremium ? disablePremium() : enablePremium())}*/}
+                        {/*    >*/}
+                        {/*        {isPremium ? "Debug: disattiva Premium" : "Debug: attiva Premium"}*/}
+                        {/*    </button>*/}
+                        {/*</div>*/}
                     </div>
 
                     <div className="flex items-center gap-2">
