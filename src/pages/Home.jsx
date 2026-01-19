@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import { Plus, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -153,43 +153,99 @@ export default function Home() {
         })
     }, [transactions, isPremium, debouncedQuery])
 
+    /**
+     * HEADER: hide on scroll (giù = sparisce, su = riappare)
+     * - super stabile su Android WebView
+     * - animazione via transform (performante)
+     */
+    const [showHeader, setShowHeader] = useState(true)
+    const lastScrollY = useRef(0)
+
+    useEffect(() => {
+        let ticking = false
+
+        const onScroll = () => {
+            if (ticking) return
+            ticking = true
+
+            window.requestAnimationFrame(() => {
+                const currentY = window.scrollY || 0
+
+                // vicino al top: sempre visibile
+                if (currentY < 8) {
+                    setShowHeader(true)
+                } else if (currentY > lastScrollY.current && currentY > 64) {
+                    // scroll down: nascondi
+                    setShowHeader(false)
+                } else if (currentY < lastScrollY.current) {
+                    // scroll up: mostra
+                    setShowHeader(true)
+                }
+
+                lastScrollY.current = currentY
+                ticking = false
+            })
+        }
+
+        window.addEventListener("scroll", onScroll, { passive: true })
+        return () => window.removeEventListener("scroll", onScroll)
+    }, [])
+
     return (
         <div className="min-h-screen text-slate-50 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-            {/* Top bar */}
-            <div className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/70 backdrop-blur">
-                <div className="mx-auto max-w-6xl px-4 py-4 flex items-start justify-between gap-4">
-                    <div>
-                        <h1 className="text-xl font-extrabold tracking-tight">HOW AM I POOR</h1>
-                        <p className="mt-1 text-sm text-slate-400">I miei conti • local storage • giudizio quotidiano</p>
-                    </div>
+            {/* Top bar – hide on scroll */}
+            <div
+                className={`fixed top-0 left-0 right-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur transition-transform duration-300 ${
+                    showHeader ? "translate-y-0" : "-translate-y-full"
+                }`}
+            >
+                {/* safe-area spacer */}
+                <div className="pt-[env(safe-area-inset-top)]" />
 
-                    <div className="flex items-center gap-2">
-                        <Button variant="ghost" className="h-11 rounded-xl" onClick={() => setPremiumHubOpen(true)} title="Premium">
-                            Premium
-                        </Button>
+                <div className="mx-auto max-w-6xl px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <h1 className="text-lg font-extrabold tracking-tight truncate">HOW AM I POOR</h1>
+                            <p className="text-xs text-slate-400 truncate">I miei conti • local storage • giudizio quotidiano</p>
+                        </div>
 
-                        <Button
-                            onClick={() => {
-                                setEditingTx(null)
-                                setIsModalOpen(true)
-                            }}
-                            className="h-11 rounded-xl px-4 gap-2 bg-slate-100 text-slate-900 hover:bg-white"
-                        >
-                            <Plus className="h-4 w-4" />
-                            <span className="hidden sm:inline">Nuovo Movimento</span>
-                        </Button>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                                variant="ghost"
+                                className="h-10 rounded-xl"
+                                onClick={() => setPremiumHubOpen(true)}
+                                title="Premium"
+                            >
+                                Premium
+                            </Button>
 
-                        <Button
-                            onClick={() => setShowReset(true)}
-                            variant="secondary"
-                            className="h-11 rounded-xl bg-slate-900/50 text-slate-100 border border-slate-800 hover:bg-slate-900"
-                            title="Svuota tutti i movimenti"
-                        >
-                            Reset
-                        </Button>
+                            <Button
+                                onClick={() => {
+                                    setEditingTx(null)
+                                    setIsModalOpen(true)
+                                }}
+                                className="h-10 w-10 rounded-xl bg-slate-100 text-slate-900 hover:bg-white p-0"
+                                aria-label="Nuovo movimento"
+                                title="Nuovo movimento"
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+
+                            <Button
+                                onClick={() => setShowReset(true)}
+                                variant="secondary"
+                                className="h-10 rounded-xl bg-slate-900/50 text-slate-100 border border-slate-800 hover:bg-slate-900 hidden sm:inline-flex"
+                                title="Svuota tutti i movimenti"
+                            >
+                                Reset
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* Spacer per evitare che il contenuto finisca sotto l’header fixed */}
+            <div className="h-[72px]" />
 
             <main className="mx-auto max-w-6xl px-4 py-6 md:py-8 space-y-6 pb-16">
                 {isLoading ? (
