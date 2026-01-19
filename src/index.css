@@ -1,18 +1,30 @@
 @import "tailwindcss";
 
-html, body, #root {
-    height: 100%;
-}
-:root {
-    --safe-top: env(safe-area-inset-top, 0px);
-    --safe-right: env(safe-area-inset-right, 0px);
-    --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --safe-left: env(safe-area-inset-left, 0px);
-}
+@layer base {
+    /* LIGHT */
+    html.light {
+        color-scheme: light;
+        --bg: 248 250 252;          /* slate-50 */
+        --fg: 15 23 42;             /* slate-900 */
+        --card: 255 255 255;        /* white */
+        --card-2: 248 250 252;      /* slate-50 */
+        --border: 226 232 240;      /* slate-200 */
+        --muted: 241 245 249;       /* slate-100 */
+        --muted-fg: 71 85 105;      /* slate-600 */
+    }
 
-body {
-    padding-top: var(--safe-top);
-    padding-right: var(--safe-right);
-    padding-bottom: var(--safe-bottom);
-    padding-left: var(--safe-left);
+    /* DARK */
+    html.dark {
+        color-scheme: dark;
+        --bg: 2 6 23;               /* slate-950 */
+        --fg: 248 250 252;          /* slate-50 */
+        --card: 15 23 42;           /* slate-900 */
+        --card-2: 2 6 23;           /* slate-950 */
+        --border: 30 41 59;         /* slate-800 */
+        --muted: 15 23 42;          /* slate-900 */
+        --muted-fg: 148 163 184;    /* slate-400 */
+    }
+
+    html, body, #root { height: 100%; }
+    body { background: rgb(var(--bg)); color: rgb(var(--fg)); }
 }

@@ -3,6 +3,26 @@ import ReactDOM from "react-dom/client"
 import App from "./App.jsx"
 import "./index.css"
 
+const KEY = "how-am-i-poor-theme" // "light" | "dark"
+
+function bootstrapTheme() {
+    try {
+        const v = localStorage.getItem(KEY)
+        const theme = v === "light" || v === "dark" ? v : "dark"
+
+        const html = document.documentElement
+        html.classList.remove("light", "dark")
+        html.classList.add(theme)
+
+        // aiuta form controls / scrollbar / UA styling
+        html.style.colorScheme = theme
+    } catch {
+        // ignore
+    }
+}
+
+bootstrapTheme()
+
 ReactDOM.createRoot(document.getElementById("root")).render(
     <React.StrictMode>
         <App />

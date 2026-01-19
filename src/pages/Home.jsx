@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
-import { Plus, Lock } from "lucide-react"
+import { Plus, Lock, Sun, Moon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 import BalanceCard from "@/components/dashboard/BalanceCard"
@@ -20,6 +20,7 @@ import useTransactions from "@/hooks/useTransactions"
 import usePremium from "@/hooks/usePremium"
 import useAdsConsent from "@/hooks/useAdsConsent"
 import useDebouncedValue from "@/hooks/useDebouncedValue"
+import useTheme from "@/hooks/useTheme"
 
 function formatEUR(n) {
     return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(Number(n) || 0)
@@ -62,6 +63,9 @@ export default function Home() {
 
     const { isPremium, enablePremium } = usePremium()
     const { adsConsent } = useAdsConsent()
+
+    const { theme, toggleTheme } = useTheme()
+    const ThemeIcon = theme === "dark" ? Moon : Sun
 
     const { transactions, isLoading, add, update, remove, restore, reset, totals } = useTransactions()
     const { income, expenses, balance } = totals
@@ -132,7 +136,6 @@ export default function Home() {
         setLastDeleted(null)
     }
 
-    // ✅ RANGE grafico/lista (free: sempre 30d, premium: 30d o all)
     const effectiveRange = isPremium ? chartRange : "30d"
 
     const chartTransactions = useMemo(() => {
@@ -140,7 +143,6 @@ export default function Home() {
         return transactions.filter((t) => isWithinLastDays(t.date, 30))
     }, [transactions, effectiveRange])
 
-    // ✅ Premium search: filtra solo se premium e query non vuota
     const filteredTransactions = useMemo(() => {
         if (!isPremium) return transactions
         const q = norm(debouncedQuery)
@@ -154,9 +156,7 @@ export default function Home() {
     }, [transactions, isPremium, debouncedQuery])
 
     /**
-     * HEADER: hide on scroll (giù = sparisce, su = riappare)
-     * - super stabile su Android WebView
-     * - animazione via transform (performante)
+     * HEADER: hide on scroll
      */
     const [showHeader, setShowHeader] = useState(true)
     const lastScrollY = useRef(0)
@@ -171,16 +171,9 @@ export default function Home() {
             window.requestAnimationFrame(() => {
                 const currentY = window.scrollY || 0
 
-                // vicino al top: sempre visibile
-                if (currentY < 8) {
-                    setShowHeader(true)
-                } else if (currentY > lastScrollY.current && currentY > 64) {
-                    // scroll down: nascondi
-                    setShowHeader(false)
-                } else if (currentY < lastScrollY.current) {
-                    // scroll up: mostra
-                    setShowHeader(true)
-                }
+                if (currentY < 8) setShowHeader(true)
+                else if (currentY > lastScrollY.current && currentY > 64) setShowHeader(false)
+                else if (currentY < lastScrollY.current) setShowHeader(true)
 
                 lastScrollY.current = currentY
                 ticking = false
@@ -191,31 +184,43 @@ export default function Home() {
         return () => window.removeEventListener("scroll", onScroll)
     }, [])
 
+    // Surface helpers (deterministiche via CSS vars)
+    const surface = "rounded-3xl border shadow-sm bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+    const surfaceSoft = "rounded-2xl border shadow-sm bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+    const muted = "text-[rgb(var(--muted-fg))]"
+
     return (
-        <div className="min-h-screen text-slate-50 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+        <div className="min-h-screen bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
             {/* Top bar – hide on scroll */}
             <div
-                className={`fixed top-0 left-0 right-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur transition-transform duration-300 ${
-                    showHeader ? "translate-y-0" : "-translate-y-full"
-                }`}
+                className={[
+                    "fixed top-0 left-0 right-0 z-40 border-b transition-transform duration-300",
+                    "bg-[rgb(var(--card))] border-[rgb(var(--border))]",
+                    showHeader ? "translate-y-0" : "-translate-y-full",
+                ].join(" ")}
             >
-                {/* safe-area spacer */}
                 <div className="pt-[env(safe-area-inset-top)]" />
 
                 <div className="mx-auto max-w-6xl px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                             <h1 className="text-lg font-extrabold tracking-tight truncate">HOW AM I POOR</h1>
-                            <p className="text-xs text-slate-400 truncate">I miei conti • local storage • giudizio quotidiano</p>
+                            <p className={`text-xs ${muted} truncate`}>I miei conti • local storage • giudizio quotidiano</p>
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
+                            {/* ONE BUTTON: light <-> dark */}
                             <Button
                                 variant="ghost"
-                                className="h-10 rounded-xl"
-                                onClick={() => setPremiumHubOpen(true)}
-                                title="Premium"
+                                className="h-10 w-10 rounded-xl p-0"
+                                onClick={toggleTheme}
+                                title={theme === "dark" ? "Tema: Scuro (clic per Chiaro)" : "Tema: Chiaro (clic per Scuro)"}
+                                aria-label="Cambia tema"
                             >
+                                <ThemeIcon className="h-4 w-4" />
+                            </Button>
+
+                            <Button variant="ghost" className="h-10 rounded-xl" onClick={() => setPremiumHubOpen(true)} title="Premium">
                                 Premium
                             </Button>
 
@@ -224,7 +229,7 @@ export default function Home() {
                                     setEditingTx(null)
                                     setIsModalOpen(true)
                                 }}
-                                className="h-10 w-10 rounded-xl bg-slate-100 text-slate-900 hover:bg-white p-0"
+                                className="h-10 w-10 rounded-xl p-0 bg-slate-900 text-white hover:opacity-90"
                                 aria-label="Nuovo movimento"
                                 title="Nuovo movimento"
                             >
@@ -234,7 +239,7 @@ export default function Home() {
                             <Button
                                 onClick={() => setShowReset(true)}
                                 variant="secondary"
-                                className="h-10 rounded-xl bg-slate-900/50 text-slate-100 border border-slate-800 hover:bg-slate-900 hidden sm:inline-flex"
+                                className="h-10 rounded-xl border hidden sm:inline-flex bg-[rgb(var(--muted))] border-[rgb(var(--border))] text-[rgb(var(--fg))] hover:opacity-90"
                                 title="Svuota tutti i movimenti"
                             >
                                 Reset
@@ -244,29 +249,38 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* Spacer per evitare che il contenuto finisca sotto l’header fixed */}
+            {/* Spacer per header fixed */}
             <div className="h-[72px]" />
 
             <main className="mx-auto max-w-6xl px-4 py-6 md:py-8 space-y-6 pb-16">
                 {isLoading ? (
                     <div className="space-y-6">
-                        <div className="h-52 rounded-3xl bg-slate-900/40 border border-slate-800 animate-pulse" />
+                        <div className="h-52 rounded-3xl border animate-pulse bg-[rgb(var(--card-2))] border-[rgb(var(--border))]" />
                         <div className="grid lg:grid-cols-5 gap-6">
-                            <div className="lg:col-span-2 h-80 rounded-3xl bg-slate-900/40 border border-slate-800 animate-pulse" />
-                            <div className="lg:col-span-3 h-80 rounded-3xl bg-slate-900/40 border border-slate-800 animate-pulse" />
+                            <div className="lg:col-span-2 h-80 rounded-3xl border animate-pulse bg-[rgb(var(--card-2))] border-[rgb(var(--border))]" />
+                            <div className="lg:col-span-3 h-80 rounded-3xl border animate-pulse bg-[rgb(var(--card-2))] border-[rgb(var(--border))]" />
                         </div>
                     </div>
                 ) : (
                     <>
                         <BalanceCard balance={balance} income={income} expenses={expenses} />
 
-                        <div className="rounded-3xl border border-slate-800 bg-slate-900/30 p-5">
-                            <p className="text-sm text-slate-200">{insightText}</p>
-                            {hasAny && (
-                                <p className="mt-2 text-xs text-slate-400">
-                                    Mese corrente: entrate {formatEUR(monthStats.mi)} • uscite {formatEUR(monthStats.me)}
-                                </p>
-                            )}
+                        {/* Insight */}
+                        <div className={`${surface} p-5`}>
+                            <div className="flex items-start gap-3">
+                                <div className="mt-0.5 h-9 w-9 shrink-0 rounded-2xl bg-[rgb(var(--muted))] flex items-center justify-center">
+                                    <span className="text-sm">😈</span>
+                                </div>
+
+                                <div className="min-w-0">
+                                    <p className="font-semibold tracking-tight truncate">{insightText}</p>
+                                    {hasAny && (
+                                        <p className={`mt-1 text-xs ${muted}`}>
+                                            Mese corrente: entrate {formatEUR(monthStats.mi)} • uscite {formatEUR(monthStats.me)}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
                         {/* ADS TOP */}
@@ -275,34 +289,41 @@ export default function Home() {
                         <div className="grid lg:grid-cols-5 gap-6">
                             {/* LEFT */}
                             <div className="lg:col-span-2 min-h-[360px] space-y-3">
-                                {/* Toggle chart/list */}
                                 <div className="flex items-center justify-between">
-                                    <div className="inline-flex rounded-2xl border border-slate-800 bg-slate-900/30 p-1">
+                                    <div className={`${surfaceSoft} p-1 inline-flex`}>
                                         <button
                                             onClick={() => setLeftView("chart")}
-                                            className={`px-3 py-2 text-sm rounded-xl transition ${
-                                                leftView === "chart" ? "bg-slate-100 text-slate-900" : "text-slate-200 hover:bg-slate-900"
-                                            }`}
+                                            className={[
+                                                "px-3 py-2 text-sm rounded-xl transition",
+                                                leftView === "chart"
+                                                    ? "bg-slate-900 text-white"
+                                                    : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
+                                            ].join(" ")}
                                         >
                                             Grafico
                                         </button>
                                         <button
                                             onClick={() => setLeftView("list")}
-                                            className={`px-3 py-2 text-sm rounded-xl transition ${
-                                                leftView === "list" ? "bg-slate-100 text-slate-900" : "text-slate-200 hover:bg-slate-900"
-                                            }`}
+                                            className={[
+                                                "px-3 py-2 text-sm rounded-xl transition",
+                                                leftView === "list"
+                                                    ? "bg-slate-900 text-white"
+                                                    : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
+                                            ].join(" ")}
                                         >
                                             Elenco
                                         </button>
                                     </div>
 
-                                    {/* Range toggle (locked for free) */}
-                                    <div className="inline-flex rounded-2xl border border-slate-800 bg-slate-900/30 p-1">
+                                    <div className={`${surfaceSoft} p-1 inline-flex`}>
                                         <button
                                             onClick={() => setChartRange("30d")}
-                                            className={`px-3 py-2 text-sm rounded-xl transition ${
-                                                effectiveRange === "30d" ? "bg-slate-100 text-slate-900" : "text-slate-200 hover:bg-slate-900"
-                                            }`}
+                                            className={[
+                                                "px-3 py-2 text-sm rounded-xl transition",
+                                                effectiveRange === "30d"
+                                                    ? "bg-slate-900 text-white"
+                                                    : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
+                                            ].join(" ")}
                                             title="Ultimi 30 giorni"
                                         >
                                             30 giorni
@@ -316,9 +337,12 @@ export default function Home() {
                                                 }
                                                 setChartRange("all")
                                             }}
-                                            className={`px-3 py-2 text-sm rounded-xl transition flex items-center gap-2 ${
-                                                effectiveRange === "all" ? "bg-slate-100 text-slate-900" : "text-slate-200 hover:bg-slate-900"
-                                            }`}
+                                            className={[
+                                                "px-3 py-2 text-sm rounded-xl transition flex items-center gap-2",
+                                                effectiveRange === "all"
+                                                    ? "bg-slate-900 text-white"
+                                                    : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
+                                            ].join(" ")}
                                             title={isPremium ? "Tutto" : "Tutto (Premium)"}
                                         >
                                             {!isPremium && <Lock className="h-3.5 w-3.5" />}
@@ -327,7 +351,6 @@ export default function Home() {
                                     </div>
                                 </div>
 
-                                {/* Chart/List now uses chartTransactions */}
                                 {leftView === "chart" ? (
                                     <ExpenseChart transactions={chartTransactions} />
                                 ) : (
@@ -337,7 +360,6 @@ export default function Home() {
 
                             {/* RIGHT */}
                             <div className="lg:col-span-3 space-y-3">
-                                {/* Search */}
                                 <div className="relative">
                                     <input
                                         value={isPremium ? query : ""}
@@ -347,14 +369,14 @@ export default function Home() {
                                             if (!isPremium) openPremium("search")
                                         }}
                                         placeholder={isPremium ? "Cerca movimenti..." : "Cerca movimenti (Premium)"}
-                                        className={`w-full rounded-2xl border px-3 py-2 text-sm ${
-                                            isPremium
-                                                ? "bg-slate-900 border-slate-800 text-slate-100"
-                                                : "bg-slate-900/40 border-slate-800 text-slate-400 cursor-pointer pr-10"
-                                        }`}
+                                        className={[
+                                            "w-full rounded-2xl border px-3 py-2 text-sm outline-none shadow-sm",
+                                            "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
+                                            !isPremium ? "cursor-pointer pr-10" : "",
+                                        ].join(" ")}
                                     />
                                     {!isPremium && (
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                        <div className={`absolute right-3 top-1/2 -translate-y-1/2 ${muted} pointer-events-none`}>
                                             <Lock className="h-4 w-4" />
                                         </div>
                                     )}
@@ -376,12 +398,12 @@ export default function Home() {
                         {/* ADS BOTTOM */}
                         <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-bottom" />
 
-                        <footer className="mt-10 text-center text-xs text-slate-500">
+                        <footer className={`mt-10 text-center text-xs ${muted}`}>
                             <a
                                 href="https://jhon-apps.github.io/how-am-i-poor/privacy.html"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="underline hover:text-slate-300"
+                                className="underline hover:opacity-80"
                             >
                                 Privacy Policy
                             </a>
@@ -452,7 +474,7 @@ export default function Home() {
                     setEditingTx(null)
                     setIsModalOpen(true)
                 }}
-                className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-slate-100 text-slate-900 shadow-lg flex items-center justify-center md:hidden"
+                className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg flex items-center justify-center md:hidden bg-slate-900 text-white"
                 aria-label="Nuovo movimento"
             >
                 <Plus className="h-6 w-6" />

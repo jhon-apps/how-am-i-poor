@@ -7,12 +7,17 @@ export function Dialog({ open, onOpenChange, children }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             {/* Overlay */}
             <div
-                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                className="absolute inset-0 bg-black/60"
                 onClick={() => onOpenChange(false)}
             />
 
             {/* Content */}
-            <div className="relative z-10 w-full max-w-lg rounded-3xl border border-slate-800 bg-slate-950 p-6 shadow-xl">
+            <div
+                className="
+          relative z-10 w-full max-w-lg rounded-3xl border p-6 shadow-xl
+          bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))]
+        "
+            >
                 {children}
             </div>
         </div>
@@ -28,7 +33,5 @@ export function DialogHeader({ children }) {
 }
 
 export function DialogTitle({ children }) {
-    return (
-        <h2 className="text-lg font-bold text-slate-100">{children}</h2>
-    )
+    return <h2 className="text-lg font-bold">{children}</h2>
 }

@@ -7,25 +7,25 @@ export default function AdSlot({
     if (isPremium) return null
     if (adsConsent === "denied") return null
 
+    const card = "bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+    const sub = "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+    const muted = "text-[rgb(var(--muted-fg))]"
+
     return (
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/30 p-4">
+        <div className={`rounded-3xl border p-4 shadow-sm ${card}`}>
             <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] text-slate-400">Annuncio</span>
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider">
-          {placement}
-        </span>
+                <span className={`text-[11px] ${muted}`}>Annuncio</span>
+                <span className={`text-[10px] uppercase tracking-wider ${muted}`}>{placement}</span>
             </div>
 
             <div
-                className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 flex items-center justify-center"
+                className={`w-full rounded-2xl border flex items-center justify-center ${sub}`}
                 style={{ height }}
             >
-                <span className="text-sm text-slate-400">Ad banner (placeholder)</span>
+                <span className={`text-sm ${muted}`}>Ad banner (placeholder)</span>
             </div>
 
-            <p className="mt-2 text-[11px] text-slate-500">
-                Rimuovi la pubblicità con Premium.
-            </p>
+            <p className={`mt-2 text-[11px] ${muted}`}>Rimuovi la pubblicità con Premium.</p>
         </div>
     )
 }

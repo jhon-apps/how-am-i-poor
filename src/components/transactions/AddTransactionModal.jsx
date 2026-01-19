@@ -31,32 +31,24 @@ function buildInitialState(transaction) {
     }
 }
 
-// ✅ Parser robusto per importi IT/EN:
-// - "10,50" -> 10.5
-// - "  € 1.234,56 " -> 1234.56
-// - "1 234,56" -> 1234.56
+// ✅ Parser robusto per importi IT/EN
 function parseAmount(raw) {
     if (raw == null) return NaN
     let s = String(raw).trim()
-
-    // rimuovi simboli valuta e spazi
     s = s.replace(/\s/g, "")
     s = s.replace(/[€$£]/g, "")
 
-    // se contiene sia "." che ",", assumiamo: "." migliaia e "," decimali (tipico IT)
     if (s.includes(".") && s.includes(",")) {
-        s = s.replace(/\./g, "") // togli migliaia
-        s = s.replace(",", ".")  // decimali
+        s = s.replace(/\./g, "")
+        s = s.replace(",", ".")
         return Number(s)
     }
 
-    // se contiene solo ",": è separatore decimale
     if (s.includes(",") && !s.includes(".")) {
         s = s.replace(",", ".")
         return Number(s)
     }
 
-    // solo "." (standard)
     return Number(s)
 }
 
@@ -134,6 +126,16 @@ export default function AddTransactionModal({
         })
     }
 
+    const inputBase =
+        "w-full rounded-xl border px-3 py-2 outline-none transition shadow-sm " +
+        "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]"
+
+    const selectBase =
+        "w-full rounded-xl border px-3 py-2 outline-none transition shadow-sm " +
+        "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))]"
+
+    const pillBase = "px-3 py-1.5 rounded-full text-xs border transition"
+
     return (
         <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
             <DialogContent>
@@ -143,15 +145,19 @@ export default function AddTransactionModal({
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* toggle type */}
-                    <div className="flex gap-2 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800">
+                    <div
+                        className="flex gap-2 p-1 rounded-2xl border
+                       bg-[rgb(var(--muted))] border-[rgb(var(--border))]"
+                    >
                         <button
                             type="button"
                             onClick={() => setTypeSafe("uscita")}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition ${
+                            className={[
+                                "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition text-sm font-medium border",
                                 type === "uscita"
-                                    ? "bg-white dark:bg-slate-900 text-rose-500"
-                                    : "text-slate-400"
-                            }`}
+                                    ? "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-rose-700"
+                                    : "bg-transparent border-transparent text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--card))] hover:border-[rgb(var(--border))]",
+                            ].join(" ")}
                         >
                             <Minus size={16} /> Uscita
                         </button>
@@ -159,11 +165,12 @@ export default function AddTransactionModal({
                         <button
                             type="button"
                             onClick={() => setTypeSafe("entrata")}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition ${
+                            className={[
+                                "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition text-sm font-medium border",
                                 type === "entrata"
-                                    ? "bg-white dark:bg-slate-900 text-emerald-500"
-                                    : "text-slate-400"
-                            }`}
+                                    ? "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-emerald-700"
+                                    : "bg-transparent border-transparent text-[rgb(var(--muted-fg))] hover:bg-[rgb(var(--card))] hover:border-[rgb(var(--border))]",
+                            ].join(" ")}
                         >
                             <Plus size={16} /> Entrata
                         </button>
@@ -171,27 +178,31 @@ export default function AddTransactionModal({
 
                     {/* quick pills */}
                     <div className="flex flex-wrap gap-2">
-                        {pills.map((k) => (
-                            <button
-                                key={k}
-                                type="button"
-                                onClick={() => {
-                                    setError("")
-                                    setFormData((p) => ({ ...p, category: k }))
-                                }}
-                                className={`px-3 py-1.5 rounded-full text-xs border transition ${
-                                    formData.category === k
-                                        ? "bg-slate-100 text-slate-900 border-slate-200"
-                                        : "bg-slate-900/40 text-slate-200 border-slate-800 hover:bg-slate-900"
-                                }`}
-                            >
-                                {getCategoryLabel(k)}
-                            </button>
-                        ))}
+                        {pills.map((k) => {
+                            const selected = formData.category === k
+                            return (
+                                <button
+                                    key={k}
+                                    type="button"
+                                    onClick={() => {
+                                        setError("")
+                                        setFormData((p) => ({ ...p, category: k }))
+                                    }}
+                                    className={[
+                                        pillBase,
+                                        selected
+                                            ? "bg-slate-900 text-white border-slate-900"
+                                            : "bg-[rgb(var(--card))] text-[rgb(var(--fg))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]",
+                                    ].join(" ")}
+                                >
+                                    {getCategoryLabel(k)}
+                                </button>
+                            )
+                        })}
                     </div>
 
                     <input
-                        className="w-full rounded-xl bg-slate-900 border border-slate-800 px-3 py-2"
+                        className={inputBase}
                         placeholder="Descrizione"
                         value={formData.description}
                         onChange={(e) => {
@@ -201,11 +212,10 @@ export default function AddTransactionModal({
                         required
                     />
 
-                    {/* 🔥 qui ora puoi scrivere anche 10,50 */}
                     <input
                         type="text"
                         inputMode="decimal"
-                        className="w-full rounded-xl bg-slate-900 border border-slate-800 px-3 py-2"
+                        className={inputBase}
                         placeholder="Importo (es. 10,50)"
                         value={formData.amount}
                         onChange={(e) => {
@@ -217,7 +227,7 @@ export default function AddTransactionModal({
 
                     <input
                         type="date"
-                        className="w-full rounded-xl bg-slate-900 border border-slate-800 px-3 py-2"
+                        className={inputBase}
                         value={formData.date}
                         onChange={(e) => {
                             setError("")
@@ -226,7 +236,7 @@ export default function AddTransactionModal({
                     />
 
                     <select
-                        className="w-full rounded-xl bg-slate-900 border border-slate-800 px-3 py-2"
+                        className={selectBase}
                         value={formData.category}
                         onChange={(e) => {
                             setError("")
@@ -241,7 +251,7 @@ export default function AddTransactionModal({
                     </select>
 
                     {error && (
-                        <div className="rounded-2xl border border-rose-800/40 bg-rose-900/20 px-3 py-2 text-sm text-rose-200">
+                        <div className="rounded-2xl border px-3 py-2 text-sm bg-rose-50 border-rose-200 text-rose-800">
                             {error}
                         </div>
                     )}
