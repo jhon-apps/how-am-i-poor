@@ -1,6 +1,6 @@
 import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react"
 
-export default function BalanceCard({ balance = 0, income = 0, expenses = 0 }) {
+export default function BalanceCard({ balance = 0, income = 0, expenses = 0, onAdd }) {
     const fmt = (n) =>
         new Intl.NumberFormat("it-IT", {
             style: "currency",
@@ -43,7 +43,13 @@ export default function BalanceCard({ balance = 0, income = 0, expenses = 0 }) {
             {/* INCOME / EXPENSES */}
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {/* ENTRATE */}
-                <div className={`rounded-2xl border p-4 ${subCard}`}>
+                <button
+                    type="button"
+                    onClick={() => onAdd?.("entrata")}
+                    className={`w-full text-left rounded-2xl border p-4 ${subCard} transition hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                    title="Aggiungi Entrata"
+                    aria-label="Aggiungi Entrata"
+                >
                     <div className="flex items-center justify-between">
                         <p className={`text-xs uppercase tracking-wide ${muted}`}>Entrate</p>
                         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100">
@@ -52,10 +58,16 @@ export default function BalanceCard({ balance = 0, income = 0, expenses = 0 }) {
                     </div>
 
                     <p className="mt-2 text-lg font-bold text-emerald-700">{fmt(income)}</p>
-                </div>
+                </button>
 
                 {/* USCITE */}
-                <div className={`rounded-2xl border p-4 ${subCard}`}>
+                <button
+                    type="button"
+                    onClick={() => onAdd?.("uscita")}
+                    className={`w-full text-left rounded-2xl border p-4 ${subCard} transition hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                    title="Aggiungi Uscita"
+                    aria-label="Aggiungi Uscita"
+                >
                     <div className="flex items-center justify-between">
                         <p className={`text-xs uppercase tracking-wide ${muted}`}>Uscite</p>
                         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-100">
@@ -64,7 +76,7 @@ export default function BalanceCard({ balance = 0, income = 0, expenses = 0 }) {
                     </div>
 
                     <p className="mt-2 text-lg font-bold text-rose-700">{fmt(expenses)}</p>
-                </div>
+                </button>
             </div>
         </div>
     )

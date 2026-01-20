@@ -155,6 +155,12 @@ export default function Home() {
         })
     }, [transactions, isPremium, debouncedQuery])
 
+    const openNewTransaction = (type) => {
+        setEditingTx({ type })   // prefill per AddTransactionModal
+        setIsModalOpen(true)
+    }
+
+
     /**
      * HEADER: hide on scroll
      */
@@ -201,18 +207,26 @@ export default function Home() {
             >
                 <div className="pt-[env(safe-area-inset-top)]" />
 
-                <div className="mx-auto max-w-6xl px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
+                <div className="mx-auto max-w-6xl px-3 py-2 md:px-4 md:py-3">
+                    <div className="flex items-center justify-between gap-2">
+                        {/* LEFT */}
                         <div className="min-w-0">
-                            <h1 className="text-lg font-extrabold tracking-tight truncate">HOW AM I POOR</h1>
-                            <p className={`text-xs ${muted} truncate`}>I miei conti • local storage • giudizio quotidiano</p>
+                            <h1 className="font-extrabold tracking-tight leading-tight">
+                                <span className="block md:hidden text-base">HAIP</span>
+                                <span className="hidden md:block text-lg">HOW AM I POOR</span>
+                            </h1>
+
+                            <p className={`text-xs ${muted} truncate max-w-[18rem] sm:max-w-none`}>
+                                <span className="md:hidden">I miei conti</span>
+                                <span className="hidden md:inline">I miei conti • local storage • giudizio quotidiano</span>
+                            </p>
                         </div>
 
+                        {/* RIGHT */}
                         <div className="flex items-center gap-2 shrink-0">
-                            {/* ONE BUTTON: light <-> dark */}
                             <Button
                                 variant="ghost"
-                                className="h-10 w-10 rounded-xl p-0"
+                                size="icon"
                                 onClick={toggleTheme}
                                 title={theme === "dark" ? "Tema: Scuro (clic per Chiaro)" : "Tema: Chiaro (clic per Scuro)"}
                                 aria-label="Cambia tema"
@@ -220,26 +234,19 @@ export default function Home() {
                                 <ThemeIcon className="h-4 w-4" />
                             </Button>
 
-                            <Button variant="ghost" className="h-10 rounded-xl text-amber-300 border" onClick={() => setPremiumHubOpen(true)} title="Premium">
+                            <Button
+                                variant="outline"
+                                className="h-9 rounded-xl px-3 md:h-10 md:px-4"
+                                onClick={() => setPremiumHubOpen(true)}
+                                title="Premium"
+                            >
                                 Premium
                             </Button>
-
-                            {/*<Button*/}
-                            {/*    onClick={() => {*/}
-                            {/*        setEditingTx(null)*/}
-                            {/*        setIsModalOpen(true)*/}
-                            {/*    }}*/}
-                            {/*    className="h-10 w-10 rounded-xl p-0 bg-slate-900 text-white hover:opacity-90"*/}
-                            {/*    aria-label="Nuovo movimento"*/}
-                            {/*    title="Nuovo movimento"*/}
-                            {/*>*/}
-                            {/*    <Plus className="h-4 w-4" />*/}
-                            {/*</Button>*/}
 
                             <Button
                                 onClick={() => setShowReset(true)}
                                 variant="secondary"
-                                className="h-10 rounded-xl border hidden sm:inline-flex bg-[rgb(var(--muted))] border-[rgb(var(--border))] text-[rgb(var(--fg))] hover:opacity-90"
+                                className="hidden md:inline-flex h-9 md:h-10 rounded-xl px-3 md:px-4"
                                 title="Svuota tutti i movimenti"
                             >
                                 Reset
@@ -250,9 +257,9 @@ export default function Home() {
             </div>
 
             {/* Spacer per header fixed */}
-            <div className="h-[72px]" />
+            <div className="h-[64px] md:h-[72px]" />
 
-            <main className="mx-auto max-w-6xl px-4 py-6 md:py-8 space-y-6 pb-16">
+            <main className="mx-auto max-w-6xl px-3 sm:px-4 py-5 md:py-8 space-y-5 md:space-y-6 pb-16">
                 {isLoading ? (
                     <div className="space-y-6">
                         <div className="h-52 rounded-3xl border animate-pulse bg-[rgb(var(--card-2))] border-[rgb(var(--border))]" />
@@ -263,20 +270,39 @@ export default function Home() {
                     </div>
                 ) : (
                     <>
-                        <BalanceCard balance={balance} income={income} expenses={expenses} />
+                        <BalanceCard
+                            balance={balance}
+                            income={income}
+                            expenses={expenses}
+                            onAdd={(type) => openNewTransaction(type)}
+                        />
+
 
                         {/* Insight */}
-                        <div className={`${surface} p-5`}>
+                        <div className={`${surface} p-4 md:p-5`}>
                             <div className="flex items-start gap-3">
-                                <div className="mt-0.5 h-9 w-9 shrink-0 rounded-2xl bg-[rgb(var(--muted))] flex items-center justify-center">
-                                    <span className="text-sm">😈</span>
-                                </div>
+                                {/* Accent (sempre visibile, zero jitter) */}
+                                <div className="mt-1 h-10 w-1.5 rounded-full bg-slate-900" />
 
-                                <div className="min-w-0">
-                                    <p className="font-semibold tracking-tight truncate">{insightText}</p>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-9 w-9 shrink-0 rounded-2xl bg-[rgb(var(--muted))] flex items-center justify-center">
+                                            <span className="text-sm">😈</span>
+                                        </div>
+
+                                        <p className={`text-xs font-semibold uppercase tracking-wide ${muted}`}>
+                                            Verdetto del giorno
+                                        </p>
+                                    </div>
+
+                                    <p className="mt-2 text-base md:text-lg font-extrabold tracking-tight leading-snug select-none">
+                                        {insightText}
+                                    </p>
+
                                     {hasAny && (
-                                        <p className={`mt-1 text-xs ${muted}`}>
-                                            Mese corrente: entrate {formatEUR(monthStats.mi)} • uscite {formatEUR(monthStats.me)}
+                                        <p className={`mt-2 text-xs ${muted}`}>
+                                            Mese corrente: entrate {formatEUR(monthStats.mi)} • uscite {formatEUR(monthStats.me)} • netto{" "}
+                                            <span className="font-semibold">{formatEUR(monthStats.net)}</span>
                                         </p>
                                     )}
                                 </div>
@@ -286,18 +312,16 @@ export default function Home() {
                         {/* ADS TOP */}
                         <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-top" />
 
-                        <div className="grid lg:grid-cols-5 gap-6">
+                        <div className="grid lg:grid-cols-5 gap-5 md:gap-6">
                             {/* LEFT */}
                             <div className="lg:col-span-2 min-h-[360px] space-y-3">
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-2">
                                     <div className={`${surfaceSoft} p-1 inline-flex`}>
                                         <button
                                             onClick={() => setLeftView("chart")}
                                             className={[
                                                 "px-3 py-2 text-sm rounded-xl transition",
-                                                leftView === "chart"
-                                                    ? "bg-slate-900 text-white"
-                                                    : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
+                                                leftView === "chart" ? "bg-slate-900 text-white" : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
                                             ].join(" ")}
                                         >
                                             Grafico
@@ -306,9 +330,7 @@ export default function Home() {
                                             onClick={() => setLeftView("list")}
                                             className={[
                                                 "px-3 py-2 text-sm rounded-xl transition",
-                                                leftView === "list"
-                                                    ? "bg-slate-900 text-white"
-                                                    : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
+                                                leftView === "list" ? "bg-slate-900 text-white" : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
                                             ].join(" ")}
                                         >
                                             Elenco
@@ -320,9 +342,7 @@ export default function Home() {
                                             onClick={() => setChartRange("30d")}
                                             className={[
                                                 "px-3 py-2 text-sm rounded-xl transition",
-                                                effectiveRange === "30d"
-                                                    ? "bg-slate-900 text-white"
-                                                    : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
+                                                effectiveRange === "30d" ? "bg-slate-900 text-white" : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
                                             ].join(" ")}
                                             title="Ultimi 30 giorni"
                                         >
@@ -339,9 +359,7 @@ export default function Home() {
                                             }}
                                             className={[
                                                 "px-3 py-2 text-sm rounded-xl transition flex items-center gap-2",
-                                                effectiveRange === "all"
-                                                    ? "bg-slate-900 text-white"
-                                                    : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
+                                                effectiveRange === "all" ? "bg-slate-900 text-white" : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
                                             ].join(" ")}
                                             title={isPremium ? "Tutto" : "Tutto (Premium)"}
                                         >
@@ -351,11 +369,7 @@ export default function Home() {
                                     </div>
                                 </div>
 
-                                {leftView === "chart" ? (
-                                    <ExpenseChart transactions={chartTransactions} />
-                                ) : (
-                                    <CategoryBreakdownList transactions={chartTransactions} />
-                                )}
+                                {leftView === "chart" ? <ExpenseChart transactions={chartTransactions} /> : <CategoryBreakdownList transactions={chartTransactions} />}
                             </div>
 
                             {/* RIGHT */}
@@ -375,6 +389,7 @@ export default function Home() {
                                             !isPremium ? "cursor-pointer pr-10" : "",
                                         ].join(" ")}
                                     />
+
                                     {!isPremium && (
                                         <div className={`absolute right-3 top-1/2 -translate-y-1/2 ${muted} pointer-events-none`}>
                                             <Lock className="h-4 w-4" />
@@ -399,12 +414,7 @@ export default function Home() {
                         <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-bottom" />
 
                         <footer className={`mt-10 text-center text-xs ${muted}`}>
-                            <a
-                                href="https://jhon-apps.github.io/how-am-i-poor/privacy.html"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline hover:opacity-80"
-                            >
+                            <a href="https://jhon-apps.github.io/how-am-i-poor/privacy.html" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">
                                 Privacy Policy
                             </a>
                         </footer>
@@ -459,12 +469,7 @@ export default function Home() {
                 }}
             />
 
-            <PremiumHub
-                open={premiumHubOpen}
-                onClose={() => setPremiumHubOpen(false)}
-                isPremium={isPremium}
-                onSubscribe={() => enablePremium()}
-            />
+            <PremiumHub open={premiumHubOpen} onClose={() => setPremiumHubOpen(false)} isPremium={isPremium} onSubscribe={() => enablePremium()} />
 
             <motion.button
                 initial={{ scale: 0 }}
@@ -476,6 +481,7 @@ export default function Home() {
                 }}
                 className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg flex items-center justify-center md:hidden bg-slate-900 text-white"
                 aria-label="Nuovo movimento"
+                title="Nuovo movimento"
             >
                 <Plus className="h-6 w-6" />
             </motion.button>
