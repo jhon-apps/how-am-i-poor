@@ -11,6 +11,10 @@ export default function TransactionItem({ tx, onDelete, onEdit, isPremium, onPre
     const locked = isLockedTransaction(tx, isPremium)
     const isExpense = tx.type === "uscita"
 
+    const card = "bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+    const sub = "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+    const muted = "text-[rgb(var(--muted-fg))]"
+
     const onOpen = () => {
         if (locked) {
             onPremium?.("history")
@@ -37,9 +41,9 @@ export default function TransactionItem({ tx, onDelete, onEdit, isPremium, onPre
                 if (e.key === "Enter" || e.key === " ") onOpen()
             }}
             className={[
-                "relative flex items-center justify-between gap-4 rounded-2xl border p-4 transition",
-                "bg-white/80 border-slate-200 hover:bg-white",
-                "dark:bg-slate-900/40 dark:border-slate-800 dark:hover:bg-slate-900/55",
+                "relative flex items-center justify-between gap-4 rounded-2xl border p-4 transition shadow-sm",
+                card,
+                "hover:opacity-[0.98]",
                 locked ? "cursor-pointer" : "cursor-pointer",
             ].join(" ")}
         >
@@ -47,23 +51,24 @@ export default function TransactionItem({ tx, onDelete, onEdit, isPremium, onPre
             <div className="flex items-center gap-4 min-w-0">
                 <div
                     className={[
-                        "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
-                        isExpense
-                            ? "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
-                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+                        "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border",
+                        sub,
                         locked ? "opacity-60" : "",
                     ].join(" ")}
                     aria-hidden="true"
                 >
-                    {isExpense ? <ArrowDownRight size={18} /> : <ArrowUpRight size={18} />}
+                    {/* Icon color stays semantic and readable */}
+                    {isExpense ? (
+                        <ArrowDownRight size={18} className="text-rose-700" />
+                    ) : (
+                        <ArrowUpRight size={18} className="text-emerald-700" />
+                    )}
                 </div>
 
                 <div className={["min-w-0", locked ? "opacity-60" : ""].join(" ")}>
-                    <p className="font-bold tracking-tight truncate">
-                        {tx.description}
-                    </p>
+                    <p className="font-bold tracking-tight truncate">{tx.description}</p>
 
-                    <p className="tracking-tight">
+                    <p className={["text-sm tracking-tight truncate", muted].join(" ")}>
                         {new Date(tx.date).toLocaleDateString("it-IT")} • {tx.category}
                     </p>
                 </div>
@@ -71,24 +76,18 @@ export default function TransactionItem({ tx, onDelete, onEdit, isPremium, onPre
 
             {/* RIGHT */}
             <div className="flex items-center gap-3 shrink-0">
-                <span
-                    className={[
-                        "font-semibold tabular-nums",
-                        isExpense ? "text-rose-700 dark:text-rose-300" : "text-emerald-700 dark:text-emerald-300",
-                        locked ? "opacity-60" : "",
-                    ].join(" ")}
-                >
-                    {isExpense ? "-" : "+"}
-                    {formatEUR(tx.amount)}
-                </span>
+        <span className={["font-semibold tabular-nums", locked ? "opacity-60" : ""].join(" ")}>
+          {isExpense ? "-" : "+"}
+            <span className={isExpense ? "text-rose-700" : "text-emerald-700"}>{formatEUR(tx.amount)}</span>
+        </span>
 
                 <button
                     type="button"
                     onClick={onRemove}
                     className={[
                         "h-10 w-10 rounded-xl inline-flex items-center justify-center transition",
-                        "text-slate-500 hover:text-rose-700 hover:bg-rose-50",
-                        "dark:text-slate-400 dark:hover:text-rose-300 dark:hover:bg-rose-500/10",
+                        muted,
+                        "hover:bg-[rgb(var(--muted))] hover:opacity-90",
                         locked ? "opacity-60" : "",
                     ].join(" ")}
                     title={locked ? "Storico Premium" : "Elimina"}
@@ -102,12 +101,10 @@ export default function TransactionItem({ tx, onDelete, onEdit, isPremium, onPre
             {locked && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div
-                        className="
-                            rounded-full border px-3 py-1 text-xs flex items-center gap-2
-                            bg-white/90 border-slate-200 text-slate-800
-                            dark:bg-slate-950/80 dark:border-slate-700 dark:text-slate-200
-                            shadow-sm
-                        "
+                        className={[
+                            "rounded-full border px-3 py-1 text-xs flex items-center gap-2 shadow-sm",
+                            "bg-[rgb(var(--card))] border-[rgb(var(--border))]",
+                        ].join(" ")}
                     >
                         <Lock className="h-3.5 w-3.5" />
                         Storico Premium (30+ giorni)

@@ -14,19 +14,23 @@ export default function CategoryBreakdownList({ transactions = [] }) {
 
     const totalAll = rows.reduce((s, r) => s + r.value, 0)
 
+    const card = "bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+    const muted = "text-[rgb(var(--muted-fg))]"
+    const track = "bg-[rgb(var(--muted))]"
+
     if (!rows.length) {
         return (
-            <div className="rounded-3xl border p-5 bg-white border-slate-200 dark:bg-slate-900/30 dark:border-slate-800">
-                <p className="text-sm text-slate-700 dark:text-slate-300">Nessuna uscita da analizzare.</p>
+            <div className={`rounded-3xl border p-5 shadow-sm ${card}`}>
+                <p className={`text-sm ${muted}`}>Nessuna uscita da analizzare.</p>
             </div>
         )
     }
 
     return (
-        <div className="rounded-3xl border p-5 bg-white border-slate-200 dark:bg-slate-900/30 dark:border-slate-800">
+        <div className={`rounded-3xl border p-5 shadow-sm ${card}`}>
             <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Spese per categoria</h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
+                <h3 className="text-sm font-semibold">Spese per categoria</h3>
+                <p className={`text-xs ${muted}`}>
                     Totale: {totalAll.toLocaleString("it-IT", { style: "currency", currency: "EUR" })}
                 </p>
             </div>
@@ -37,18 +41,21 @@ export default function CategoryBreakdownList({ transactions = [] }) {
                     return (
                         <div key={r.category} className="flex items-center justify-between gap-4">
                             <div className="min-w-0">
-                                <p className="text-sm capitalize truncate text-slate-800 dark:text-slate-200">{r.category}</p>
+                                <p className="text-sm capitalize truncate">{r.category}</p>
 
-                                <div className="mt-1 h-2 w-48 max-w-full rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800">
-                                    <div className="h-full bg-slate-900/60 dark:bg-slate-200/70" style={{ width: `${pct}%` }} />
+                                <div className={`mt-1 h-2 w-48 max-w-full rounded-full overflow-hidden ${track}`}>
+                                    <div
+                                        className="h-full bg-slate-900/60"
+                                        style={{ width: `${pct}%` }}
+                                    />
                                 </div>
                             </div>
 
                             <div className="text-right shrink-0">
-                                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                <p className="text-sm font-semibold">
                                     {r.value.toLocaleString("it-IT", { style: "currency", currency: "EUR" })}
                                 </p>
-                                <p className="text-xs text-slate-600 dark:text-slate-400">{pct}%</p>
+                                <p className={`text-xs ${muted}`}>{pct}%</p>
                             </div>
                         </div>
                     )

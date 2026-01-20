@@ -12,7 +12,7 @@ const CATEGORY_COLORS = {
     altro: "#94A3B8",
 }
 
-function isDarkThemeActive() {
+function isDark() {
     return document?.documentElement?.classList?.contains("dark")
 }
 
@@ -32,22 +32,28 @@ export default function ExpenseChart({ transactions = [] }) {
 
     const total = data.reduce((s, x) => s + x.value, 0)
 
+    const card = "bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+    const sub = "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+    const muted = "text-[rgb(var(--muted-fg))]"
+
     return (
-        <div className="rounded-3xl border p-6 shadow-sm bg-white border-slate-200 dark:bg-slate-900/40 dark:border-slate-800 backdrop-blur-xl">
-            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Distribuzione Spese</h3>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                {total > 0 ? `Totale uscite: ${total.toLocaleString("it-IT", { style: "currency", currency: "EUR" })}` : "Aggiungi una uscita per vedere la torta."}
+        <div className={`rounded-3xl border p-6 shadow-sm ${card}`}>
+            <h3 className="text-base font-semibold">Distribuzione Spese</h3>
+            <p className={`mt-1 text-sm ${muted}`}>
+                {total > 0
+                    ? `Totale uscite: ${total.toLocaleString("it-IT", { style: "currency", currency: "EUR" })}`
+                    : "Aggiungi una uscita per vedere la torta."}
             </p>
 
             {/* container stabile: evita warning size */}
             <div className="mt-4 min-h-[16rem] h-64">
                 {total <= 0 ? (
-                    <div className="h-full rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-center bg-slate-50 dark:bg-slate-950/30">
-                        <div className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-slate-800/60 flex items-center justify-center">
+                    <div className={`h-full rounded-2xl border border-dashed flex flex-col items-center justify-center text-center ${sub}`}>
+                        <div className={`h-10 w-10 rounded-2xl border flex items-center justify-center ${sub}`}>
                             <span>🥧</span>
                         </div>
-                        <p className="mt-3 text-sm font-medium text-slate-900 dark:text-slate-200">Nessuna spesa registrata</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">Prova con “uscita → alimentari → 12€” 😉</p>
+                        <p className="mt-3 text-sm font-medium">Nessuna spesa registrata</p>
+                        <p className={`text-xs ${muted}`}>Prova con “uscita → alimentari → 12€” 😉</p>
                     </div>
                 ) : (
                     <ResponsiveContainer width="100%" height="100%">
@@ -62,8 +68,9 @@ export default function ExpenseChart({ transactions = [] }) {
                                     const name = item?.name ?? item?.payload?.name ?? ""
                                     const value = Number(item?.value ?? item?.payload?.value ?? 0)
 
-                                    const dark = isDarkThemeActive()
+                                    const dark = isDark()
 
+                                    // Tooltip inline style: segue html.dark/html.light
                                     return (
                                         <div
                                             style={{
@@ -81,15 +88,23 @@ export default function ExpenseChart({ transactions = [] }) {
                                             <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", gap: 12 }}>
                                                 <span style={{ fontSize: 12, opacity: 0.8 }}>Totale</span>
                                                 <span style={{ fontSize: 14, fontWeight: 800 }}>
-                                                    {value.toLocaleString("it-IT", { style: "currency", currency: "EUR" })}
-                                                </span>
+                          {value.toLocaleString("it-IT", { style: "currency", currency: "EUR" })}
+                        </span>
                                             </div>
                                         </div>
                                     )
                                 }}
                             />
 
-                            <Pie data={data} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2} isAnimationActive={false}>
+                            <Pie
+                                data={data}
+                                dataKey="value"
+                                nameKey="name"
+                                innerRadius={55}
+                                outerRadius={90}
+                                paddingAngle={2}
+                                isAnimationActive={false}
+                            >
                                 {data.map((entry) => (
                                     <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || "#94A3B8"} />
                                 ))}

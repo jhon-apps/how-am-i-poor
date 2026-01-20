@@ -220,21 +220,21 @@ export default function Home() {
                                 <ThemeIcon className="h-4 w-4" />
                             </Button>
 
-                            <Button variant="ghost" className="h-10 rounded-xl" onClick={() => setPremiumHubOpen(true)} title="Premium">
+                            <Button variant="ghost" className="h-10 rounded-xl text-amber-300 border" onClick={() => setPremiumHubOpen(true)} title="Premium">
                                 Premium
                             </Button>
 
-                            <Button
-                                onClick={() => {
-                                    setEditingTx(null)
-                                    setIsModalOpen(true)
-                                }}
-                                className="h-10 w-10 rounded-xl p-0 bg-slate-900 text-white hover:opacity-90"
-                                aria-label="Nuovo movimento"
-                                title="Nuovo movimento"
-                            >
-                                <Plus className="h-4 w-4" />
-                            </Button>
+                            {/*<Button*/}
+                            {/*    onClick={() => {*/}
+                            {/*        setEditingTx(null)*/}
+                            {/*        setIsModalOpen(true)*/}
+                            {/*    }}*/}
+                            {/*    className="h-10 w-10 rounded-xl p-0 bg-slate-900 text-white hover:opacity-90"*/}
+                            {/*    aria-label="Nuovo movimento"*/}
+                            {/*    title="Nuovo movimento"*/}
+                            {/*>*/}
+                            {/*    <Plus className="h-4 w-4" />*/}
+                            {/*</Button>*/}
 
                             <Button
                                 onClick={() => setShowReset(true)}

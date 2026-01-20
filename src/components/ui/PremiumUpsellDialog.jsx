@@ -19,26 +19,30 @@ export default function PremiumUpsellDialog({ open, onClose, onConfirm, reason =
         onConfirm?.()
     }
 
+    const card = "bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+    const soft = "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+    const muted = "text-[rgb(var(--muted-fg))]"
+
     return (
         <>
             <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-                <DialogContent className="bg-white text-slate-900 border border-slate-200 dark:bg-slate-950 dark:text-slate-100 dark:border-slate-800">
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100">Sblocca Premium</DialogTitle>
+                        <DialogTitle>Sblocca Premium</DialogTitle>
                     </DialogHeader>
 
                     <div className="space-y-4">
                         {/* top notice */}
-                        <div className="rounded-2xl border p-4 bg-white border-slate-200 dark:bg-slate-900/30 dark:border-slate-800">
+                        <div className={`rounded-2xl border p-4 shadow-sm ${card}`}>
                             <div className="flex items-start gap-3">
-                                <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center dark:bg-slate-800/60">
-                                    <Lock className="h-4 w-4 text-slate-700 dark:text-slate-100" />
+                                <div className={`h-9 w-9 rounded-xl border flex items-center justify-center ${soft}`}>
+                                    <Lock className={`h-4 w-4 ${muted}`} />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                    <p className="text-sm font-semibold">
                                         Funzione bloccata: {reasonTitle}
                                     </p>
-                                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                                    <p className={`mt-1 text-sm ${muted}`}>
                                         Meno blur. Più verità. Zero pubblicità.
                                     </p>
                                 </div>
@@ -47,47 +51,44 @@ export default function PremiumUpsellDialog({ open, onClose, onConfirm, reason =
 
                         {/* features */}
                         <div className="space-y-3">
-                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200">
-                                <Search className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                            <div className="flex items-center gap-3 text-sm">
+                                <Search className={`h-4 w-4 ${muted}`} />
                                 <span>Ricerca movimenti</span>
                             </div>
-                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200">
-                                <CalendarClock className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                            <div className="flex items-center gap-3 text-sm">
+                                <CalendarClock className={`h-4 w-4 ${muted}`} />
                                 <span>Storico completo (oltre 30 giorni)</span>
                             </div>
-                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200">
-                                <FileSpreadsheet className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                            <div className="flex items-center gap-3 text-sm">
+                                <FileSpreadsheet className={`h-4 w-4 ${muted}`} />
                                 <span>Export Excel (in arrivo)</span>
                             </div>
-                            <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200">
-                                <BadgeCheck className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                            <div className="flex items-center gap-3 text-sm">
+                                <BadgeCheck className={`h-4 w-4 ${muted}`} />
                                 <span>Niente pubblicità</span>
                             </div>
                         </div>
 
                         {/* price box */}
-                        <div className="rounded-2xl border p-4 flex items-center justify-between bg-slate-50 border-slate-200 dark:bg-slate-900/30 dark:border-slate-800">
+                        <div className={`rounded-2xl border p-4 flex items-center justify-between shadow-sm ${soft}`}>
                             <div>
-                                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">5,00 € / mese</p>
-                                <p className="text-xs text-slate-600 dark:text-slate-400">Annulla quando vuoi</p>
+                                <p className="text-sm font-semibold">5,00 € / mese</p>
+                                <p className={`text-xs ${muted}`}>Annulla quando vuoi</p>
                             </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-500">Google Play</div>
+                            <div className={`text-xs ${muted}`}>Google Play</div>
                         </div>
 
                         <div className="flex justify-end gap-2">
                             <Button variant="secondary" onClick={onClose}>
                                 Non ora
                             </Button>
-                            <Button
-                                onClick={handleSubscribe}
-                                className="bg-slate-900 text-white hover:opacity-90 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
-                            >
+                            <Button onClick={handleSubscribe}>
                                 Sblocca Premium
                             </Button>
                         </div>
 
                         {!BILLING_READY && (
-                            <p className="text-xs text-slate-600 dark:text-slate-500">
+                            <p className={`text-xs ${muted}`}>
                                 Nota: Billing non ancora attivo in questa versione.
                             </p>
                         )}
