@@ -39,7 +39,12 @@ function isWithinLastDays(dateISO, days) {
 
 export default function Home() {
     const [isModalOpen, setIsModalOpen] = useState(false)
+
+    // ✅ editingTx SOLO per modifica reale
     const [editingTx, setEditingTx] = useState(null)
+
+    // ✅ createType SOLO per prefill quando creo un nuovo movimento
+    const [createType, setCreateType] = useState("uscita") // "uscita" | "entrata"
 
     const [showReset, setShowReset] = useState(false)
 
@@ -155,11 +160,17 @@ export default function Home() {
         })
     }, [transactions, isPremium, debouncedQuery])
 
+    // ✅ NUOVO: apri sempre la modale in modalità CREAZIONE (stessa del +)
     const openNewTransaction = (type) => {
-        setEditingTx({ type })   // prefill per AddTransactionModal
+        setEditingTx(null)       // importantissimo: NON è modifica
+        setCreateType(type)      // prefill type
         setIsModalOpen(true)
     }
 
+    const openEditTransaction = (tx) => {
+        setEditingTx(tx)         // modalità modifica
+        setIsModalOpen(true)
+    }
 
     /**
      * HEADER: hide on scroll
@@ -190,14 +201,18 @@ export default function Home() {
         return () => window.removeEventListener("scroll", onScroll)
     }, [])
 
-    // Surface helpers (deterministiche via CSS vars)
     const surface = "rounded-3xl border shadow-sm bg-[rgb(var(--card))] border-[rgb(var(--border))]"
     const surfaceSoft = "rounded-2xl border shadow-sm bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
     const muted = "text-[rgb(var(--muted-fg))]"
 
+    // ✅ transaction prop della modale:
+    // - se sto editando: passa il tx intero
+    // - se sto creando: passa null (così è IDENTICA al +) e usiamo createType per prefill via key + prop extra
+    const modalTransaction = editingTx?.id ? editingTx : null
+
     return (
         <div className="min-h-screen bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
-            {/* Top bar – hide on scroll */}
+            {/* Top bar */}
             <div
                 className={[
                     "fixed top-0 left-0 right-0 z-40 border-b transition-transform duration-300",
@@ -209,7 +224,6 @@ export default function Home() {
 
                 <div className="mx-auto max-w-6xl px-3 py-2 md:px-4 md:py-3">
                     <div className="flex items-center justify-between gap-2">
-                        {/* LEFT */}
                         <div className="min-w-0">
                             <h1 className="font-extrabold tracking-tight leading-tight">
                                 <span className="block md:hidden text-base">HAIP</span>
@@ -222,7 +236,6 @@ export default function Home() {
                             </p>
                         </div>
 
-                        {/* RIGHT */}
                         <div className="flex items-center gap-2 shrink-0">
                             <Button
                                 variant="ghost"
@@ -256,7 +269,6 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* Spacer per header fixed */}
             <div className="h-[64px] md:h-[72px]" />
 
             <main className="mx-auto max-w-6xl px-3 sm:px-4 py-5 md:py-8 space-y-5 md:space-y-6 pb-16">
@@ -270,34 +282,20 @@ export default function Home() {
                     </div>
                 ) : (
                     <>
-                        <BalanceCard
-                            balance={balance}
-                            income={income}
-                            expenses={expenses}
-                            onAdd={(type) => openNewTransaction(type)}
-                        />
+                        <BalanceCard balance={balance} income={income} expenses={expenses} onAdd={(type) => openNewTransaction(type)} />
 
-
-                        {/* Insight */}
                         <div className={`${surface} p-4 md:p-5`}>
                             <div className="flex items-start gap-3">
-                                {/* Accent (sempre visibile, zero jitter) */}
                                 <div className="mt-1 h-10 w-1.5 rounded-full bg-slate-900" />
-
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
                                         <div className="h-9 w-9 shrink-0 rounded-2xl bg-[rgb(var(--muted))] flex items-center justify-center">
                                             <span className="text-sm">😈</span>
                                         </div>
-
-                                        <p className={`text-xs font-semibold uppercase tracking-wide ${muted}`}>
-                                            Verdetto del giorno
-                                        </p>
+                                        <p className={`text-xs font-semibold uppercase tracking-wide ${muted}`}>Verdetto del giorno</p>
                                     </div>
 
-                                    <p className="mt-2 text-base md:text-lg font-extrabold tracking-tight leading-snug select-none">
-                                        {insightText}
-                                    </p>
+                                    <p className="mt-2 text-base md:text-lg font-extrabold tracking-tight leading-snug select-none">{insightText}</p>
 
                                     {hasAny && (
                                         <p className={`mt-2 text-xs ${muted}`}>
@@ -309,11 +307,9 @@ export default function Home() {
                             </div>
                         </div>
 
-                        {/* ADS TOP */}
                         <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-top" />
 
                         <div className="grid lg:grid-cols-5 gap-5 md:gap-6">
-                            {/* LEFT */}
                             <div className="lg:col-span-2 min-h-[360px] space-y-3">
                                 <div className="flex items-center justify-between gap-2">
                                     <div className={`${surfaceSoft} p-1 inline-flex`}>
@@ -372,7 +368,6 @@ export default function Home() {
                                 {leftView === "chart" ? <ExpenseChart transactions={chartTransactions} /> : <CategoryBreakdownList transactions={chartTransactions} />}
                             </div>
 
-                            {/* RIGHT */}
                             <div className="lg:col-span-3 space-y-3">
                                 <div className="relative">
                                     <input
@@ -400,46 +395,51 @@ export default function Home() {
                                 <TransactionList
                                     transactions={filteredTransactions}
                                     onDelete={handleDelete}
-                                    onEdit={(tx) => {
-                                        setEditingTx(tx)
-                                        setIsModalOpen(true)
-                                    }}
+                                    onEdit={(tx) => openEditTransaction(tx)}
                                     isPremium={isPremium}
                                     onPremium={openPremium}
                                 />
                             </div>
                         </div>
 
-                        {/* ADS BOTTOM */}
                         <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-bottom" />
 
                         <footer className={`mt-10 text-center text-xs ${muted}`}>
-                            <a href="https://jhon-apps.github.io/how-am-i-poor/privacy.html" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">
+                            <a
+                                href="https://jhon-apps.github.io/how-am-i-poor/privacy.html"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline hover:opacity-80"
+                            >
                                 Privacy Policy
                             </a>
-
                         </footer>
-                        <div className={`mt-10 text-center text-xs ${muted}`}>Built by JhonApps - jhon-apps.github.io</div>
 
+                        <div className={`mt-10 text-center text-xs ${muted}`}>Built by JhonApps - jhon-apps.github.io</div>
                     </>
-           )}
+                )}
             </main>
 
+            {/* ✅ MODALE: stessa del + per creazione; prefill type via prop */}
             <AddTransactionModal
-                key={`${isModalOpen}-${editingTx?.id ?? "new"}`}
+                key={`${isModalOpen}-${editingTx?.id ?? `new-${createType}`}`}
                 isOpen={isModalOpen}
-                transaction={editingTx}
+                transaction={modalTransaction}
                 recentCategories={recentCategories}
                 onClose={() => {
                     setIsModalOpen(false)
                     setEditingTx(null)
                 }}
                 onSubmit={(data) => {
-                    editingTx ? update(data) : add(data)
+                    if (editingTx?.id) update(data)
+                    else add(data)
+
                     setIsModalOpen(false)
                     setEditingTx(null)
                 }}
                 isLoading={false}
+                // 👇 questa prop deve esistere nella tua modale (vedi nota sotto)
+                defaultType={createType}
             />
 
             <ResetConfirmDialog
@@ -478,10 +478,7 @@ export default function Home() {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                    setEditingTx(null)
-                    setIsModalOpen(true)
-                }}
+                onClick={() => openNewTransaction("uscita")}
                 className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg flex items-center justify-center md:hidden bg-slate-900 text-white"
                 aria-label="Nuovo movimento"
                 title="Nuovo movimento"

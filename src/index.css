@@ -1,30 +1,38 @@
 @import "tailwindcss";
 
 @layer base {
-    /* LIGHT */
     html.light {
         color-scheme: light;
-        --bg: 248 250 252;          /* slate-50 */
-        --fg: 15 23 42;             /* slate-900 */
-        --card: 255 255 255;        /* white */
-        --card-2: 248 250 252;      /* slate-50 */
-        --border: 226 232 240;      /* slate-200 */
-        --muted: 241 245 249;       /* slate-100 */
-        --muted-fg: 71 85 105;      /* slate-600 */
+        --bg: 248 250 252;
+        --fg: 15 23 42;
+        --card: 255 255 255;
+        --card-2: 248 250 252;
+        --border: 226 232 240;
+        --muted: 241 245 249;
+        --muted-fg: 71 85 105;
     }
 
-    /* DARK */
     html.dark {
         color-scheme: dark;
-        --bg: 2 6 23;               /* slate-950 */
-        --fg: 248 250 252;          /* slate-50 */
-        --card: 15 23 42;           /* slate-900 */
-        --card-2: 2 6 23;           /* slate-950 */
-        --border: 30 41 59;         /* slate-800 */
-        --muted: 15 23 42;          /* slate-900 */
-        --muted-fg: 148 163 184;    /* slate-400 */
+        --bg: 2 6 23;
+        --fg: 248 250 252;
+        --card: 15 23 42;
+        --card-2: 2 6 23;
+        --border: 30 41 59;
+        --muted: 15 23 42;
+        --muted-fg: 148 163 184;
     }
 
-    html, body, #root { height: 100%; }
-    body { background: rgb(var(--bg)); color: rgb(var(--fg)); }
+    html,
+    body,
+    #root {
+        height: 100%;
+        width: 100%;
+        overflow-x: hidden;
+    }
+
+    body {
+        background: rgb(var(--bg));
+        color: rgb(var(--fg));
+    }
 }
