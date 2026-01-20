@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
-import { Plus, Lock, Sun, Moon } from "lucide-react"
+import { Plus, Lock, Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 import BalanceCard from "@/components/dashboard/BalanceCard"
@@ -8,6 +8,7 @@ import ExpenseChart from "@/components/dashboard/ExpenseChart"
 import CategoryBreakdownList from "@/components/dashboard/CategoryBreakdownList"
 import TransactionList from "@/components/dashboard/TransactionList"
 import AddTransactionModal from "@/components/transactions/AddTransactionModal"
+import AllTransactionsDialog from "@/components/transactions/AllTransactionsDialog"
 
 import ResetConfirmDialog from "@/components/ui/ResetConfirmDialog"
 import UndoToast from "@/components/ui/UndoToast"
@@ -40,11 +41,14 @@ function isWithinLastDays(dateISO, days) {
 export default function Home() {
     const [isModalOpen, setIsModalOpen] = useState(false)
 
-    // ✅ solo per modifica reale
+    // modifica reale
     const [editingTx, setEditingTx] = useState(null)
 
-    // ✅ solo per creazione (Entrate/Uscite/+)
-    const [createType, setCreateType] = useState("uscita") // default per +
+    // default tipo creazione (se apri da +)
+    const [createType, setCreateType] = useState("uscita")
+
+    // modale elenco completo
+    const [allOpen, setAllOpen] = useState(false)
 
     const [showReset, setShowReset] = useState(false)
 
@@ -72,6 +76,9 @@ export default function Home() {
     const { income, expenses, balance } = totals
 
     const hasAny = useMemo(() => transactions.length > 0, [transactions])
+
+    // Ultimi 5 per Home (snapshot)
+    const lastFive = useMemo(() => transactions.slice(0, 5), [transactions])
 
     const recentCategories = useMemo(() => {
         const uniq = []
@@ -143,17 +150,18 @@ export default function Home() {
         return transactions.filter((t) => isWithinLastDays(t.date, 30))
     }, [transactions, effectiveRange])
 
-    const filteredTransactions = useMemo(() => {
-        if (!isPremium) return transactions
+    // ricerca Premium (Home)
+    const filteredForHome = useMemo(() => {
+        if (!isPremium) return lastFive
         const q = norm(debouncedQuery)
-        if (!q) return transactions
-        return transactions.filter((t) => norm(t.description).includes(q) || norm(t.category).includes(q))
-    }, [transactions, isPremium, debouncedQuery])
+        if (!q) return lastFive
+        return lastFive.filter((t) => norm(t.description).includes(q) || norm(t.category).includes(q))
+    }, [lastFive, isPremium, debouncedQuery])
 
-    // ✅ CREAZIONE: stessa modale del +, ma con type preimpostato
+    // creazione (Entrate/Uscite / +)
     const openNewTransaction = (type) => {
         setEditingTx(null)
-        setCreateType(type)
+        setCreateType(type || "uscita")
         setIsModalOpen(true)
     }
 
@@ -162,6 +170,7 @@ export default function Home() {
         setIsModalOpen(true)
     }
 
+    // header hide on scroll
     const [showHeader, setShowHeader] = useState(true)
     const lastScrollY = useRef(0)
 
@@ -223,19 +232,11 @@ export default function Home() {
                                 <ThemeIcon className="h-4 w-4" />
                             </Button>
 
-                            <Button
-                                variant="outline"
-                                className="h-9 rounded-xl px-3 md:h-10 md:px-4"
-                                onClick={() => setPremiumHubOpen(true)}
-                            >
+                            <Button variant="outline" className="h-9 rounded-xl px-3 md:h-10 md:px-4" onClick={() => setPremiumHubOpen(true)}>
                                 Premium
                             </Button>
 
-                            <Button
-                                onClick={() => setShowReset(true)}
-                                variant="secondary"
-                                className="hidden md:inline-flex h-9 md:h-10 rounded-xl px-3 md:px-4"
-                            >
+                            <Button onClick={() => setShowReset(true)} variant="secondary" className="hidden md:inline-flex h-9 md:h-10 rounded-xl px-3 md:px-4">
                                 Reset
                             </Button>
                         </div>
@@ -256,9 +257,14 @@ export default function Home() {
                     </div>
                 ) : (
                     <>
-                        {/* ✅ Entrate/Uscite aprono NUOVO con type preimpostato */}
-                        <BalanceCard balance={balance} income={income} expenses={expenses} onAdd={(type) => openNewTransaction(type)} />
+                        <BalanceCard
+                            balance={balance}
+                            income={income}
+                            expenses={expenses}
+                            onAdd={(type) => openNewTransaction(type)} // Entrate/Uscite => tipo preimpostato
+                        />
 
+                        {/* Insight */}
                         <div className={`${surface} p-4 md:p-5`}>
                             <div className="flex items-start gap-3">
                                 <div className="mt-1 h-10 w-1.5 rounded-full bg-slate-900" />
@@ -285,6 +291,7 @@ export default function Home() {
                         <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-top" />
 
                         <div className="grid lg:grid-cols-5 gap-5 md:gap-6">
+                            {/* LEFT */}
                             <div className="lg:col-span-2 min-w-0 min-h-[360px] space-y-3">
                                 <div className="flex w-full flex-wrap items-center justify-between gap-2 min-w-0">
                                     <div className={`${surfaceSoft} p-1 inline-flex flex-wrap min-w-0`}>
@@ -344,7 +351,26 @@ export default function Home() {
                                 </div>
                             </div>
 
+                            {/* RIGHT */}
                             <div className="lg:col-span-3 min-w-0 space-y-3">
+                                {/* titolo + CTA */}
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <h2 className="text-base font-extrabold tracking-tight">Movimenti</h2>
+                                        <p className={`text-xs ${muted}`}>Ultimi 5. Per farti male con calma.</p>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setAllOpen(true)}
+                                        className="shrink-0 rounded-xl border px-3 py-2 text-sm bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]"
+                                        title="Apri elenco completo"
+                                    >
+                                        Vedi tutti
+                                    </button>
+                                </div>
+
+                                {/* search (Home): resta ma lavora sui 5 */}
                                 <div className="relative w-full min-w-0">
                                     <input
                                         value={isPremium ? query : ""}
@@ -353,7 +379,7 @@ export default function Home() {
                                         onClick={() => {
                                             if (!isPremium) openPremium("search")
                                         }}
-                                        placeholder={isPremium ? "Cerca movimenti..." : "Cerca movimenti (Premium)"}
+                                        placeholder={isPremium ? "Cerca (solo ultimi 5)..." : "Cerca movimenti (Premium)"}
                                         className={[
                                             "w-full max-w-full min-w-0 rounded-2xl border px-3 py-2 text-sm outline-none shadow-sm",
                                             "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
@@ -368,9 +394,10 @@ export default function Home() {
                                     )}
                                 </div>
 
+                                {/* lista breve */}
                                 <div className="w-full min-w-0 overflow-hidden">
                                     <TransactionList
-                                        transactions={filteredTransactions}
+                                        transactions={filteredForHome}
                                         onDelete={handleDelete}
                                         onEdit={(tx) => openEditTransaction(tx)}
                                         isPremium={isPremium}
@@ -397,7 +424,18 @@ export default function Home() {
                 )}
             </main>
 
-            {/* ✅ Modal: defaultType decide entrata/uscita SOLO in creazione */}
+            {/* Modale elenco completo */}
+            <AllTransactionsDialog
+                open={allOpen}
+                onClose={() => setAllOpen(false)}
+                transactions={transactions}
+                isPremium={isPremium}
+                onPremium={openPremium}
+                onEdit={(tx) => openEditTransaction(tx)}
+                onDelete={handleDelete}
+            />
+
+            {/* Modale add/edit */}
             <AddTransactionModal
                 key={`${isModalOpen}-${editingTx?.id ?? `new-${createType}`}`}
                 isOpen={isModalOpen}
@@ -449,6 +487,8 @@ export default function Home() {
             />
 
             <PremiumHub open={premiumHubOpen} onClose={() => setPremiumHubOpen(false)} isPremium={isPremium} onSubscribe={() => enablePremium()} />
+
+            {/* FAB */}
             <motion.button
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
