@@ -130,6 +130,12 @@ export default function Home() {
         setPremiumUpsellOpen(true)
     }
 
+    // ✅ FIX stacking: chiudi prima la modale "Tutti i movimenti", poi apri Premium
+    const openPremiumFromAllDialog = (reason) => {
+        setAllOpen(false)
+        openPremium(reason)
+    }
+
     const handleDelete = (id) => {
         const tx = transactions.find((t) => t.id === id)
         if (!tx) return
@@ -163,7 +169,6 @@ export default function Home() {
         return transactions.filter((t) => isWithinLastDays(t.date, 30))
     }, [transactions, effectiveRange])
 
-    // search Home (premium): applicata SOLO ai 5 visibili + (eventualmente) locked, ma noi la facciamo sui visibili (UX più chiara)
     const searchedVisible = useMemo(() => {
         if (!isPremium) return homeVisible
         const q = norm(debouncedQuery)
@@ -171,7 +176,6 @@ export default function Home() {
         return homeVisible.filter((t) => norm(t.description).includes(q) || norm(t.category).includes(q))
     }, [homeVisible, isPremium, debouncedQuery])
 
-    // creazione / modifica
     const openNewTransaction = (type) => {
         setEditingTx(null)
         setCreateType(type || "uscita")
@@ -183,7 +187,6 @@ export default function Home() {
         setIsModalOpen(true)
     }
 
-    // header hide on scroll
     const [showHeader, setShowHeader] = useState(true)
     const lastScrollY = useRef(0)
 
@@ -238,6 +241,21 @@ export default function Home() {
                                 <ThemeIcon className="h-4 w-4" />
                             </Button>
 
+                            {/* Seed: temporaneo */}
+                            {/*<button*/}
+                            {/*    type="button"*/}
+                            {/*    onClick={async () => {*/}
+                            {/*        const { seedTransactions } = await import("@/dev/seedTransactions")*/}
+                            {/*        const count = seedTransactions(1200)*/}
+                            {/*        console.log("Seeded:", count)*/}
+                            {/*        location.reload()*/}
+                            {/*    }}*/}
+                            {/*    className="inline-flex h-9 rounded-xl px-3 text-sm border bg-[rgb(var(--card-2))] border-[rgb(var(--border))] hover:opacity-90"*/}
+                            {/*    title="DEV: seed 1200 movimenti"*/}
+                            {/*>*/}
+                            {/*    Seed 1200*/}
+                            {/*</button>*/}
+
                             <Button
                                 variant="outline"
                                 className="h-9 rounded-xl px-3 md:h-10 md:px-4"
@@ -271,12 +289,7 @@ export default function Home() {
                     </div>
                 ) : (
                     <>
-                        <BalanceCard
-                            balance={balance}
-                            income={income}
-                            expenses={expenses}
-                            onAdd={(type) => openNewTransaction(type)}
-                        />
+                        <BalanceCard balance={balance} income={income} expenses={expenses} onAdd={(type) => openNewTransaction(type)} />
 
                         <div className={`${surface} p-4 md:p-5`}>
                             <div className="flex items-start gap-3">
@@ -366,7 +379,6 @@ export default function Home() {
 
                             {/* RIGHT */}
                             <div className="lg:col-span-3 min-w-0 space-y-3">
-                                {/* titolo + CTA */}
                                 <div className="flex items-center justify-between gap-2">
                                     <div className="min-w-0">
                                         <h2 className="text-base font-extrabold tracking-tight">Movimenti</h2>
@@ -383,7 +395,6 @@ export default function Home() {
                                     </button>
                                 </div>
 
-                                {/* search (Home): premium gated */}
                                 <div className="relative w-full min-w-0">
                                     <input
                                         value={isPremium ? query : ""}
@@ -407,7 +418,6 @@ export default function Home() {
                                     )}
                                 </div>
 
-                                {/* visibili */}
                                 <div className="w-full min-w-0 overflow-hidden">
                                     <TransactionList
                                         transactions={searchedVisible}
@@ -418,7 +428,6 @@ export default function Home() {
                                     />
                                 </div>
 
-                                {/* locked (blur intenso + overlay) */}
                                 {!isPremium && homeLocked.length > 0 && (
                                     <div className="pt-3">
                                         <div className="relative">
@@ -476,7 +485,7 @@ export default function Home() {
                 onClose={() => setAllOpen(false)}
                 transactions={transactions}
                 isPremium={isPremium}
-                onPremium={openPremium}
+                onPremium={openPremiumFromAllDialog}   // ✅ qui la fix
                 onEdit={(tx) => openEditTransaction(tx)}
                 onDelete={handleDelete}
             />

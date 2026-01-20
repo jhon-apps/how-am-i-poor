@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react"
 import { Lock, ArrowLeft, Calendar, RotateCcw } from "lucide-react"
+import VirtualizedTransactionList from "@/components/transactions/VirtualizedTransactionList"
 import TransactionList from "@/components/dashboard/TransactionList"
 
 function norm(s) {
@@ -37,17 +38,21 @@ export default function AllTransactionsDialog({
         }
     }, [open])
 
+    // 1) filtro data (sempre)
     const filteredByDate = useMemo(() => {
         if (!selectedDate) return transactions
         return transactions.filter((t) => toYmd(t.date) === selectedDate)
     }, [transactions, selectedDate])
 
+    // 2) search: premium gated (come prima)
     const filtered = useMemo(() => {
+        if (!isPremium) return filteredByDate
         const q = norm(query)
         if (!q) return filteredByDate
         return filteredByDate.filter((t) => norm(t.description).includes(q) || norm(t.category).includes(q))
-    }, [filteredByDate, query])
+    }, [filteredByDate, query, isPremium])
 
+    // 3) split visible/locked (locked = >30 giorni, solo non premium)
     const { visible, locked } = useMemo(() => {
         if (isPremium) return { visible: filtered, locked: [] }
 
@@ -60,16 +65,18 @@ export default function AllTransactionsDialog({
         return { visible: v, locked: l }
     }, [filtered, isPremium])
 
+    // preview locked per performance (mostriamo solo una parte)
+    const LOCKED_PREVIEW_COUNT = 25
+    const lockedPreview = useMemo(() => locked.slice(0, LOCKED_PREVIEW_COUNT), [locked])
+
     if (!open) return null
 
     const muted = "text-[rgb(var(--muted-fg))]"
 
     return (
         <div className="fixed inset-0 z-[80]">
-            {/* overlay */}
             <div className="absolute inset-0 bg-black/35 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
-            {/* sheet wrapper */}
             <div className="absolute inset-0 flex items-end md:items-center md:justify-center">
                 <div
                     className={[
@@ -81,12 +88,11 @@ export default function AllTransactionsDialog({
                     ].join(" ")}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {/* header */}
+                    {/* HEADER */}
                     <div className="shrink-0 border-b bg-[rgb(var(--card))] border-[rgb(var(--border))]">
                         <div className="pt-[env(safe-area-inset-top)]" />
 
                         <div className="px-4 py-3 flex items-center gap-3">
-                            {/* ✅ SOLO freccia per tornare alla Home */}
                             <button
                                 onClick={onClose}
                                 className="h-10 w-10 shrink-0 rounded-2xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))] flex items-center justify-center"
@@ -98,14 +104,15 @@ export default function AllTransactionsDialog({
 
                             <div className="min-w-0 flex-1">
                                 <p className="text-sm font-extrabold tracking-tight">Tutti i movimenti</p>
-                                <p className={`text-xs ${muted} truncate`}>{isPremium ? "Ricerca + filtro giorno" : "Storico oltre 30 giorni = Premium"}</p>
+                                <p className={`text-xs ${muted} truncate`}>
+                                    {isPremium ? "Ricerca + filtro giorno" : "Storico oltre 30 giorni = Premium"}
+                                </p>
                             </div>
                         </div>
 
-                        {/* search + date filter */}
                         <div className="px-4 pb-3">
                             <div className="flex items-center gap-2">
-                                {/* ✅ richiesta: flex-2 */}
+                                {/* search */}
                                 <div className="relative flex-2 min-w-0">
                                     <input
                                         value={isPremium ? query : ""}
@@ -128,7 +135,7 @@ export default function AllTransactionsDialog({
                                     )}
                                 </div>
 
-                                {/* date: stabile su mobile */}
+                                {/* date */}
                                 <div className="shrink-0 flex items-center gap-2">
                                     <button
                                         type="button"
@@ -181,25 +188,53 @@ export default function AllTransactionsDialog({
                         </div>
                     </div>
 
-                    {/* content scroll */}
-                    <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y px-4 pb-6">
+                    {/* CONTENT */}
+                    <div className="flex-1 min-h-0 px-4 pb-6 overflow-y-auto overscroll-contain touch-pan-y">
+                        {/* VISIBILI (<=30 giorni) */}
                         <div className="pt-4">
-                            <TransactionList
-                                transactions={visible}
-                                onDelete={onDelete}
-                                onEdit={onEdit}
-                                isPremium={isPremium}
-                                onPremium={onPremium}
-                            />
+                            {visible.length > 0 ? (
+                                <div className="h-[50vh] md:h-[55vh] min-h-[260px]">
+                                    <VirtualizedTransactionList
+                                        transactions={visible}
+                                        onDelete={onDelete}
+                                        onEdit={onEdit}
+                                        isPremium={isPremium}
+                                        onPremium={onPremium}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="rounded-3xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))] p-5">
+                                    <p className="text-sm font-semibold">Nessun movimento visibile (ultimi 30 giorni).</p>
+                                    <p className={`mt-1 text-xs ${muted}`}>
+                                        {locked.length > 0 ? "Ma hai contenuti nello storico Premium qui sotto." : "Prova a cambiare giorno o rimuovere il filtro data."}
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
+                        {/* LOCKED (>30 giorni): preview blurrata + CTA */}
                         {!isPremium && locked.length > 0 && (
                             <div className="pt-5">
-                                <div className="relative">
-                                    {/* blur intenso */}
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className={`text-xs ${muted}`}>
+                                        Storico bloccato: <span className="font-semibold">{locked.length}</span> movimenti oltre 30 giorni
+                                        <span className="ml-2 opacity-80">(mostro {Math.min(LOCKED_PREVIEW_COUNT, locked.length)})</span>
+                                    </p>
+
+                                    <button
+                                        onClick={() => onPremium?.("history")}
+                                        className="inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm bg-[rgb(var(--card))] border-[rgb(var(--border))] shadow-sm"
+                                        title="Sblocca storico completo"
+                                    >
+                                        <Lock className="h-4 w-4" />
+                                        Sblocca
+                                    </button>
+                                </div>
+
+                                <div className="mt-3 relative">
                                     <div className="pointer-events-none select-none blur-[10px] opacity-60">
                                         <TransactionList
-                                            transactions={locked}
+                                            transactions={lockedPreview}
                                             onDelete={() => {}}
                                             onEdit={() => {}}
                                             isPremium={false}
@@ -207,14 +242,12 @@ export default function AllTransactionsDialog({
                                         />
                                     </div>
 
-                                    {/* overlay per spegnere leggibilità */}
                                     <div
-                                        className="absolute inset-0 rounded-3xl bg-[linear-gradient(to_bottom,rgba(0,0,0,0.10),rgba(0,0,0,0.50))]"
+                                        className="absolute inset-0 rounded-3xl bg-[linear-gradient(to_bottom,rgba(0,0,0,0.10),rgba(0,0,0,0.55))]"
                                         aria-hidden="true"
                                     />
 
-                                    {/* CTA sticky */}
-                                    <div className="sticky bottom-4 mt-[-88px] flex justify-center">
+                                    <div className="absolute inset-x-0 bottom-3 flex justify-center">
                                         <button
                                             onClick={() => onPremium?.("history")}
                                             className="inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm bg-[rgb(var(--card))] border-[rgb(var(--border))] shadow-lg"
@@ -224,15 +257,6 @@ export default function AllTransactionsDialog({
                                             Storico Premium (oltre 30 giorni)
                                         </button>
                                     </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {visible.length === 0 && (isPremium || locked.length === 0) && (
-                            <div className="pt-6">
-                                <div className="rounded-3xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))] p-5">
-                                    <p className="text-sm font-semibold">Niente da giudicare qui.</p>
-                                    <p className={`mt-1 text-xs ${muted}`}>Prova a cambiare giorno o rimuovere il filtro data.</p>
                                 </div>
                             </div>
                         )}
