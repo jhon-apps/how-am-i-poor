@@ -12,8 +12,10 @@ import { suggestCategory } from "@/entities/autoCategory"
 
 const today = () => new Date().toISOString().split("T")[0]
 
-function buildInitialState(transaction) {
-    const type = transaction?.type ?? "uscita"
+// ✅ FIX: usa defaultType quando transaction è null
+function buildInitialState(transaction, defaultType) {
+    const type = transaction?.type ?? defaultType ?? "uscita"
+
     const categoryFromTx = transaction?.category
     const category =
         categoryFromTx && isCategoryAllowedForType(categoryFromTx, type)
@@ -59,13 +61,14 @@ export default function AddTransactionModal({
                                                 transaction,
                                                 isLoading,
                                                 recentCategories = [],
+                                                // ✅ nuova prop usata da Home
+                                                defaultType = "uscita",
                                             }) {
-    const initial = useMemo(() => buildInitialState(transaction), [transaction])
+    const initial = useMemo(() => buildInitialState(transaction, defaultType), [transaction, defaultType])
     const [type, setType] = useState(initial.type)
     const [formData, setFormData] = useState(initial.formData)
     const [error, setError] = useState(initial.error)
 
-    // ✅ autocategory
     const [manualCategory, setManualCategory] = useState(false)
     const [suggested, setSuggested] = useState(null)
 
@@ -87,21 +90,22 @@ export default function AddTransactionModal({
         return uniq
     }, [recentCategories, type])
 
-    // Reset stato quando cambia transaction (edit vs new)
+    // ✅ Reset stato quando si apre / cambia transaction / cambia defaultType
     useEffect(() => {
-        const next = buildInitialState(transaction)
+        if (!isOpen) return
+        const next = buildInitialState(transaction, defaultType)
         setType(next.type)
         setFormData(next.formData)
         setError("")
         setManualCategory(false)
         setSuggested(null)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [transaction, isOpen])
+    }, [transaction, defaultType, isOpen])
 
     const setTypeSafe = (nextType) => {
         setError("")
         setType(nextType)
-        setManualCategory(false) // quando cambia tipo, riattiva auto
+        setManualCategory(false)
         setFormData((p) => {
             if (isCategoryAllowedForType(p.category, nextType)) return p
             return { ...p, category: getDefaultCategoryByType(nextType) }
@@ -175,7 +179,8 @@ export default function AddTransactionModal({
         <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>{transaction ? "Modifica movimento" : "Nuovo movimento"}</DialogTitle>
+                    {/* ✅ FIX: "Modifica" solo se esiste id */}
+                    <DialogTitle>{transaction?.id ? "Modifica movimento" : "Nuovo movimento"}</DialogTitle>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -208,7 +213,7 @@ export default function AddTransactionModal({
                         </button>
                     </div>
 
-                    {/* quick pills */}
+                    {/* quick pills (stesso comportamento di prima) */}
                     <div className="flex flex-wrap gap-2">
                         {pills.map((k) => {
                             const selected = formData.category === k
@@ -223,9 +228,7 @@ export default function AddTransactionModal({
                                     }}
                                     className={[
                                         pillBase,
-                                        selected
-                                            ? "bg-slate-900 text-white border-slate-900"
-                                            : `${card} ${muted} hover:bg-[rgb(var(--card-2))]`,
+                                        selected ? "bg-slate-900 text-white border-slate-900" : `${card} ${muted} hover:bg-[rgb(var(--card-2))]`,
                                     ].join(" ")}
                                 >
                                     {getCategoryLabel(k)}
@@ -247,7 +250,6 @@ export default function AddTransactionModal({
                             required
                         />
 
-                        {/* suggestion row */}
                         <div className={`flex items-center justify-between text-xs ${muted}`}>
                             <div className="flex items-center gap-2 min-w-0">
                                 <Wand2 className="h-4 w-4 shrink-0" />
@@ -260,7 +262,6 @@ export default function AddTransactionModal({
                 </span>
                             </div>
 
-                            {/* allow apply suggestion if manual */}
                             {manualCategory && suggested && (
                                 <button
                                     type="button"
@@ -323,7 +324,7 @@ export default function AddTransactionModal({
                     )}
 
                     <Button type="submit" className="w-full" disabled={isLoading}>
-                        {transaction ? "Salva modifiche" : "Aggiungi movimento"}
+                        {transaction?.id ? "Salva modifiche" : "Aggiungi movimento"}
                     </Button>
                 </form>
             </DialogContent>

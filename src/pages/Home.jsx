@@ -40,29 +40,25 @@ function isWithinLastDays(dateISO, days) {
 export default function Home() {
     const [isModalOpen, setIsModalOpen] = useState(false)
 
-    // ✅ editingTx SOLO per modifica reale
+    // ✅ solo per modifica reale
     const [editingTx, setEditingTx] = useState(null)
 
-    // ✅ createType SOLO per prefill quando creo un nuovo movimento
-    const [createType, setCreateType] = useState("uscita") // "uscita" | "entrata"
+    // ✅ solo per creazione (Entrate/Uscite/+)
+    const [createType, setCreateType] = useState("uscita") // default per +
 
     const [showReset, setShowReset] = useState(false)
 
-    // Left panel toggles
-    const [leftView, setLeftView] = useState("chart") // "chart" | "list"
-    const [chartRange, setChartRange] = useState("30d") // "30d" | "all"
+    const [leftView, setLeftView] = useState("chart")
+    const [chartRange, setChartRange] = useState("30d")
 
-    // undo
     const [undoOpen, setUndoOpen] = useState(false)
     const [lastDeleted, setLastDeleted] = useState(null)
     const [undoTimer, setUndoTimer] = useState(null)
 
-    // premium
     const [premiumUpsellOpen, setPremiumUpsellOpen] = useState(false)
     const [premiumReason, setPremiumReason] = useState("premium")
     const [premiumHubOpen, setPremiumHubOpen] = useState(false)
 
-    // search (premium)
     const [query, setQuery] = useState("")
     const debouncedQuery = useDebouncedValue(query, 200)
 
@@ -88,7 +84,6 @@ export default function Home() {
         return uniq
     }, [transactions])
 
-    // Insight mese corrente
     const monthKey = useMemo(() => new Date().toISOString().slice(0, 7), [])
     const monthStats = useMemo(() => {
         const monthTx = transactions.filter((t) => String(t.date).slice(0, 7) === monthKey)
@@ -152,29 +147,21 @@ export default function Home() {
         if (!isPremium) return transactions
         const q = norm(debouncedQuery)
         if (!q) return transactions
-
-        return transactions.filter((t) => {
-            const d = norm(t.description)
-            const c = norm(t.category)
-            return d.includes(q) || c.includes(q)
-        })
+        return transactions.filter((t) => norm(t.description).includes(q) || norm(t.category).includes(q))
     }, [transactions, isPremium, debouncedQuery])
 
-    // ✅ NUOVO: apri sempre la modale in modalità CREAZIONE (stessa del +)
+    // ✅ CREAZIONE: stessa modale del +, ma con type preimpostato
     const openNewTransaction = (type) => {
-        setEditingTx(null)       // importantissimo: NON è modifica
-        setCreateType(type)      // prefill type
+        setEditingTx(null)
+        setCreateType(type)
         setIsModalOpen(true)
     }
 
     const openEditTransaction = (tx) => {
-        setEditingTx(tx)         // modalità modifica
+        setEditingTx(tx)
         setIsModalOpen(true)
     }
 
-    /**
-     * HEADER: hide on scroll
-     */
     const [showHeader, setShowHeader] = useState(true)
     const lastScrollY = useRef(0)
 
@@ -205,14 +192,9 @@ export default function Home() {
     const surfaceSoft = "rounded-2xl border shadow-sm bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
     const muted = "text-[rgb(var(--muted-fg))]"
 
-    // ✅ transaction prop della modale:
-    // - se sto editando: passa il tx intero
-    // - se sto creando: passa null (così è IDENTICA al +) e usiamo createType per prefill via key + prop extra
-    const modalTransaction = editingTx?.id ? editingTx : null
-
     return (
-        <div className="min-h-screen bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
-            {/* Top bar */}
+        <div className="min-h-screen overflow-x-hidden bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
+            {/* Header */}
             <div
                 className={[
                     "fixed top-0 left-0 right-0 z-40 border-b transition-transform duration-300",
@@ -237,13 +219,7 @@ export default function Home() {
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={toggleTheme}
-                                title={theme === "dark" ? "Tema: Scuro (clic per Chiaro)" : "Tema: Chiaro (clic per Scuro)"}
-                                aria-label="Cambia tema"
-                            >
+                            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Cambia tema">
                                 <ThemeIcon className="h-4 w-4" />
                             </Button>
 
@@ -251,7 +227,6 @@ export default function Home() {
                                 variant="outline"
                                 className="h-9 rounded-xl px-3 md:h-10 md:px-4"
                                 onClick={() => setPremiumHubOpen(true)}
-                                title="Premium"
                             >
                                 Premium
                             </Button>
@@ -260,7 +235,6 @@ export default function Home() {
                                 onClick={() => setShowReset(true)}
                                 variant="secondary"
                                 className="hidden md:inline-flex h-9 md:h-10 rounded-xl px-3 md:px-4"
-                                title="Svuota tutti i movimenti"
                             >
                                 Reset
                             </Button>
@@ -282,6 +256,7 @@ export default function Home() {
                     </div>
                 ) : (
                     <>
+                        {/* ✅ Entrate/Uscite aprono NUOVO con type preimpostato */}
                         <BalanceCard balance={balance} income={income} expenses={expenses} onAdd={(type) => openNewTransaction(type)} />
 
                         <div className={`${surface} p-4 md:p-5`}>
@@ -310,13 +285,13 @@ export default function Home() {
                         <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-top" />
 
                         <div className="grid lg:grid-cols-5 gap-5 md:gap-6">
-                            <div className="lg:col-span-2 min-h-[360px] space-y-3">
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className={`${surfaceSoft} p-1 inline-flex`}>
+                            <div className="lg:col-span-2 min-w-0 min-h-[360px] space-y-3">
+                                <div className="flex w-full flex-wrap items-center justify-between gap-2 min-w-0">
+                                    <div className={`${surfaceSoft} p-1 inline-flex flex-wrap min-w-0`}>
                                         <button
                                             onClick={() => setLeftView("chart")}
                                             className={[
-                                                "px-3 py-2 text-sm rounded-xl transition",
+                                                "px-3 py-2 text-sm rounded-xl transition whitespace-nowrap",
                                                 leftView === "chart" ? "bg-slate-900 text-white" : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
                                             ].join(" ")}
                                         >
@@ -325,7 +300,7 @@ export default function Home() {
                                         <button
                                             onClick={() => setLeftView("list")}
                                             className={[
-                                                "px-3 py-2 text-sm rounded-xl transition",
+                                                "px-3 py-2 text-sm rounded-xl transition whitespace-nowrap",
                                                 leftView === "list" ? "bg-slate-900 text-white" : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
                                             ].join(" ")}
                                         >
@@ -333,14 +308,13 @@ export default function Home() {
                                         </button>
                                     </div>
 
-                                    <div className={`${surfaceSoft} p-1 inline-flex`}>
+                                    <div className={`${surfaceSoft} p-1 inline-flex flex-wrap min-w-0`}>
                                         <button
                                             onClick={() => setChartRange("30d")}
                                             className={[
-                                                "px-3 py-2 text-sm rounded-xl transition",
+                                                "px-3 py-2 text-sm rounded-xl transition whitespace-nowrap",
                                                 effectiveRange === "30d" ? "bg-slate-900 text-white" : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
                                             ].join(" ")}
-                                            title="Ultimi 30 giorni"
                                         >
                                             30 giorni
                                         </button>
@@ -354,7 +328,7 @@ export default function Home() {
                                                 setChartRange("all")
                                             }}
                                             className={[
-                                                "px-3 py-2 text-sm rounded-xl transition flex items-center gap-2",
+                                                "px-3 py-2 text-sm rounded-xl transition flex items-center gap-2 whitespace-nowrap",
                                                 effectiveRange === "all" ? "bg-slate-900 text-white" : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
                                             ].join(" ")}
                                             title={isPremium ? "Tutto" : "Tutto (Premium)"}
@@ -365,11 +339,13 @@ export default function Home() {
                                     </div>
                                 </div>
 
-                                {leftView === "chart" ? <ExpenseChart transactions={chartTransactions} /> : <CategoryBreakdownList transactions={chartTransactions} />}
+                                <div className="w-full min-w-0 overflow-hidden">
+                                    {leftView === "chart" ? <ExpenseChart transactions={chartTransactions} /> : <CategoryBreakdownList transactions={chartTransactions} />}
+                                </div>
                             </div>
 
-                            <div className="lg:col-span-3 space-y-3">
-                                <div className="relative">
+                            <div className="lg:col-span-3 min-w-0 space-y-3">
+                                <div className="relative w-full min-w-0">
                                     <input
                                         value={isPremium ? query : ""}
                                         onChange={(e) => setQuery(e.target.value)}
@@ -379,7 +355,7 @@ export default function Home() {
                                         }}
                                         placeholder={isPremium ? "Cerca movimenti..." : "Cerca movimenti (Premium)"}
                                         className={[
-                                            "w-full rounded-2xl border px-3 py-2 text-sm outline-none shadow-sm",
+                                            "w-full max-w-full min-w-0 rounded-2xl border px-3 py-2 text-sm outline-none shadow-sm",
                                             "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
                                             !isPremium ? "cursor-pointer pr-10" : "",
                                         ].join(" ")}
@@ -392,13 +368,15 @@ export default function Home() {
                                     )}
                                 </div>
 
-                                <TransactionList
-                                    transactions={filteredTransactions}
-                                    onDelete={handleDelete}
-                                    onEdit={(tx) => openEditTransaction(tx)}
-                                    isPremium={isPremium}
-                                    onPremium={openPremium}
-                                />
+                                <div className="w-full min-w-0 overflow-hidden">
+                                    <TransactionList
+                                        transactions={filteredTransactions}
+                                        onDelete={handleDelete}
+                                        onEdit={(tx) => openEditTransaction(tx)}
+                                        isPremium={isPremium}
+                                        onPremium={openPremium}
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -414,17 +392,17 @@ export default function Home() {
                                 Privacy Policy
                             </a>
                         </footer>
-
                         <div className={`mt-10 text-center text-xs ${muted}`}>Built by JhonApps - jhon-apps.github.io</div>
                     </>
                 )}
             </main>
 
-            {/* ✅ MODALE: stessa del + per creazione; prefill type via prop */}
+            {/* ✅ Modal: defaultType decide entrata/uscita SOLO in creazione */}
             <AddTransactionModal
                 key={`${isModalOpen}-${editingTx?.id ?? `new-${createType}`}`}
                 isOpen={isModalOpen}
-                transaction={modalTransaction}
+                transaction={editingTx?.id ? editingTx : null}
+                defaultType={createType}
                 recentCategories={recentCategories}
                 onClose={() => {
                     setIsModalOpen(false)
@@ -438,8 +416,6 @@ export default function Home() {
                     setEditingTx(null)
                 }}
                 isLoading={false}
-                // 👇 questa prop deve esistere nella tua modale (vedi nota sotto)
-                defaultType={createType}
             />
 
             <ResetConfirmDialog
@@ -473,7 +449,6 @@ export default function Home() {
             />
 
             <PremiumHub open={premiumHubOpen} onClose={() => setPremiumHubOpen(false)} isPremium={isPremium} onSubscribe={() => enablePremium()} />
-
             <motion.button
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
