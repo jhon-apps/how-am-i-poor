@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react"
-import { X, Lock, ArrowLeft } from "lucide-react"
+import { Lock, ArrowLeft, Calendar, RotateCcw } from "lucide-react"
 import TransactionList from "@/components/dashboard/TransactionList"
 
 function norm(s) {
@@ -13,6 +13,11 @@ function isWithinLastDays(dateISO, days) {
     return diff <= days * 24 * 60 * 60 * 1000
 }
 
+function toYmd(dateLike) {
+    if (!dateLike) return ""
+    return String(dateLike).slice(0, 10)
+}
+
 export default function AllTransactionsDialog({
                                                   open,
                                                   onClose,
@@ -23,34 +28,29 @@ export default function AllTransactionsDialog({
                                                   onDelete,
                                               }) {
     const [query, setQuery] = useState("")
-    const [daysFilter, setDaysFilter] = useState("all") // "30" | "90" | "all"
+    const [selectedDate, setSelectedDate] = useState("")
 
     useEffect(() => {
         if (!open) {
             setQuery("")
-            setDaysFilter("all")
+            setSelectedDate("")
         }
     }, [open])
 
-    // 1) filtro giorni
-    const filteredByDays = useMemo(() => {
-        if (daysFilter === "all") return transactions
-        const days = daysFilter === "30" ? 30 : 90
-        return transactions.filter((t) => isWithinLastDays(t.date, days))
-    }, [transactions, daysFilter])
+    const filteredByDate = useMemo(() => {
+        if (!selectedDate) return transactions
+        return transactions.filter((t) => toYmd(t.date) === selectedDate)
+    }, [transactions, selectedDate])
 
-    // 2) filtro search (premium gated)
     const filtered = useMemo(() => {
         const q = norm(query)
-        if (!q) return filteredByDays
-        return filteredByDays.filter((t) => norm(t.description).includes(q) || norm(t.category).includes(q))
-    }, [filteredByDays, query])
+        if (!q) return filteredByDate
+        return filteredByDate.filter((t) => norm(t.description).includes(q) || norm(t.category).includes(q))
+    }, [filteredByDate, query])
 
-    // 3) split visible/locked (storico premium)
     const { visible, locked } = useMemo(() => {
         if (isPremium) return { visible: filtered, locked: [] }
 
-        // Non premium: tutto oltre 30 giorni va in locked (anche se daysFilter è 90/all)
         const v = []
         const l = []
         for (const t of filtered) {
@@ -63,11 +63,6 @@ export default function AllTransactionsDialog({
     if (!open) return null
 
     const muted = "text-[rgb(var(--muted-fg))]"
-    const pillBase =
-        "px-3 py-2 text-sm rounded-xl border transition whitespace-nowrap " +
-        "bg-[rgb(var(--card-2))] border-[rgb(var(--border))] hover:opacity-90"
-
-    const pillActive = "bg-slate-900 text-white border-slate-900"
 
     return (
         <div className="fixed inset-0 z-[80]">
@@ -90,8 +85,8 @@ export default function AllTransactionsDialog({
                     <div className="shrink-0 border-b bg-[rgb(var(--card))] border-[rgb(var(--border))]">
                         <div className="pt-[env(safe-area-inset-top)]" />
 
-                        <div className="px-4 py-3 flex items-center justify-between gap-3">
-                            {/* ✅ BACK/Home */}
+                        <div className="px-4 py-3 flex items-center gap-3">
+                            {/* ✅ SOLO freccia per tornare alla Home */}
                             <button
                                 onClick={onClose}
                                 className="h-10 w-10 shrink-0 rounded-2xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))] flex items-center justify-center"
@@ -103,27 +98,15 @@ export default function AllTransactionsDialog({
 
                             <div className="min-w-0 flex-1">
                                 <p className="text-sm font-extrabold tracking-tight">Tutti i movimenti</p>
-                                <p className={`text-xs ${muted} truncate`}>
-                                    {isPremium ? "Ricerca + filtri + storico completo" : "Storico completo è Premium (30+ giorni)"}
-                                </p>
+                                <p className={`text-xs ${muted} truncate`}>{isPremium ? "Ricerca + filtro giorno" : "Storico oltre 30 giorni = Premium"}</p>
                             </div>
-
-                            {/* close */}
-                            <button
-                                onClick={onClose}
-                                className="h-10 w-10 shrink-0 rounded-2xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))] flex items-center justify-center"
-                                aria-label="Chiudi"
-                                title="Chiudi"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
                         </div>
 
-                        {/* search + filtro giorni */}
+                        {/* search + date filter */}
                         <div className="px-4 pb-3">
                             <div className="flex items-center gap-2">
-                                {/* ✅ search più stretta */}
-                                <div className="relative flex-1 min-w-0">
+                                {/* ✅ richiesta: flex-2 */}
+                                <div className="relative flex-2 min-w-0">
                                     <input
                                         value={isPremium ? query : ""}
                                         onChange={(e) => setQuery(e.target.value)}
@@ -138,7 +121,6 @@ export default function AllTransactionsDialog({
                                             !isPremium ? "cursor-pointer pr-10" : "",
                                         ].join(" ")}
                                     />
-
                                     {!isPremium && (
                                         <div className={`absolute right-3 top-1/2 -translate-y-1/2 ${muted} pointer-events-none`}>
                                             <Lock className="h-4 w-4" />
@@ -146,38 +128,55 @@ export default function AllTransactionsDialog({
                                     )}
                                 </div>
 
-                                {/* ✅ filtro giorni */}
-                                <div className="flex items-center gap-2 shrink-0">
+                                {/* date: stabile su mobile */}
+                                <div className="shrink-0 flex items-center gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => setDaysFilter("30")}
-                                        className={[pillBase, daysFilter === "30" ? pillActive : ""].join(" ")}
-                                        title="Ultimi 30 giorni"
-                                    >
-                                        30g
-                                    </button>
-
-                                    <button
-                                        type="button"
+                                        className="h-10 w-10 rounded-2xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))] flex items-center justify-center"
+                                        title="Filtro giorno"
+                                        aria-label="Filtro giorno"
                                         onClick={() => {
-                                            // 90g è ok anche non premium (ma oltre 30 verrà blur/locked)
-                                            setDaysFilter("90")
+                                            const el = document.getElementById("haip-date-filter")
+                                            el?.showPicker?.()
+                                            el?.focus?.()
                                         }}
-                                        className={[pillBase, daysFilter === "90" ? pillActive : ""].join(" ")}
-                                        title="Ultimi 90 giorni"
                                     >
-                                        90g
+                                        <Calendar className="h-4 w-4" />
                                     </button>
+
+                                    <input
+                                        id="haip-date-filter"
+                                        type="date"
+                                        value={selectedDate}
+                                        onChange={(e) => setSelectedDate(e.target.value)}
+                                        className={[
+                                            "h-10 rounded-2xl border px-3 text-sm outline-none shadow-sm",
+                                            "bg-[rgb(var(--card-2))] border-[rgb(var(--border))] text-[rgb(var(--fg))]",
+                                            "w-[140px] sm:w-[160px]",
+                                        ].join(" ")}
+                                        title="Filtra per giorno"
+                                    />
 
                                     <button
                                         type="button"
-                                        onClick={() => setDaysFilter("all")}
-                                        className={[pillBase, daysFilter === "all" ? pillActive : ""].join(" ")}
-                                        title="Tutto"
+                                        onClick={() => setSelectedDate("")}
+                                        className="h-10 w-10 rounded-2xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))] flex items-center justify-center hover:opacity-90"
+                                        title="Rimuovi filtro data"
+                                        aria-label="Rimuovi filtro data"
                                     >
-                                        Tutto
+                                        <RotateCcw className="h-4 w-4" />
                                     </button>
                                 </div>
+                            </div>
+
+                            <div className={`mt-2 text-xs ${muted} flex items-center justify-between gap-2`}>
+                                <span className="truncate">{selectedDate ? `Filtro giorno: ${selectedDate}` : "Nessun filtro giorno"}</span>
+                                {!isPremium && (
+                                    <span className="shrink-0 inline-flex items-center gap-1">
+                    <Lock className="h-3.5 w-3.5" />
+                    oltre 30g blur
+                  </span>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -197,7 +196,8 @@ export default function AllTransactionsDialog({
                         {!isPremium && locked.length > 0 && (
                             <div className="pt-5">
                                 <div className="relative">
-                                    <div className="pointer-events-none select-none opacity-90 blur-[2px]">
+                                    {/* blur intenso */}
+                                    <div className="pointer-events-none select-none blur-[10px] opacity-60">
                                         <TransactionList
                                             transactions={locked}
                                             onDelete={() => {}}
@@ -207,6 +207,13 @@ export default function AllTransactionsDialog({
                                         />
                                     </div>
 
+                                    {/* overlay per spegnere leggibilità */}
+                                    <div
+                                        className="absolute inset-0 rounded-3xl bg-[linear-gradient(to_bottom,rgba(0,0,0,0.10),rgba(0,0,0,0.50))]"
+                                        aria-hidden="true"
+                                    />
+
+                                    {/* CTA sticky */}
                                     <div className="sticky bottom-4 mt-[-88px] flex justify-center">
                                         <button
                                             onClick={() => onPremium?.("history")}
@@ -214,9 +221,18 @@ export default function AllTransactionsDialog({
                                             title="Sblocca storico completo"
                                         >
                                             <Lock className="h-4 w-4" />
-                                            Storico Premium (30+ giorni)
+                                            Storico Premium (oltre 30 giorni)
                                         </button>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {visible.length === 0 && (isPremium || locked.length === 0) && (
+                            <div className="pt-6">
+                                <div className="rounded-3xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))] p-5">
+                                    <p className="text-sm font-semibold">Niente da giudicare qui.</p>
+                                    <p className={`mt-1 text-xs ${muted}`}>Prova a cambiare giorno o rimuovere il filtro data.</p>
                                 </div>
                             </div>
                         )}

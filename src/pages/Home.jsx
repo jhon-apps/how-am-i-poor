@@ -44,7 +44,7 @@ export default function Home() {
     // modifica reale
     const [editingTx, setEditingTx] = useState(null)
 
-    // default tipo creazione (se apri da +)
+    // creazione: tipo default (per +)
     const [createType, setCreateType] = useState("uscita")
 
     // modale elenco completo
@@ -77,8 +77,21 @@ export default function Home() {
 
     const hasAny = useMemo(() => transactions.length > 0, [transactions])
 
-    // Ultimi 5 per Home (snapshot)
+    // snapshot Home: ultimi 5
     const lastFive = useMemo(() => transactions.slice(0, 5), [transactions])
+
+    // split per blur >30 giorni (solo non premium)
+    const { homeVisible, homeLocked } = useMemo(() => {
+        if (isPremium) return { homeVisible: lastFive, homeLocked: [] }
+
+        const v = []
+        const l = []
+        for (const t of lastFive) {
+            if (isWithinLastDays(t.date, 30)) v.push(t)
+            else l.push(t)
+        }
+        return { homeVisible: v, homeLocked: l }
+    }, [lastFive, isPremium])
 
     const recentCategories = useMemo(() => {
         const uniq = []
@@ -150,15 +163,15 @@ export default function Home() {
         return transactions.filter((t) => isWithinLastDays(t.date, 30))
     }, [transactions, effectiveRange])
 
-    // ricerca Premium (Home)
-    const filteredForHome = useMemo(() => {
-        if (!isPremium) return lastFive
+    // search Home (premium): applicata SOLO ai 5 visibili + (eventualmente) locked, ma noi la facciamo sui visibili (UX più chiara)
+    const searchedVisible = useMemo(() => {
+        if (!isPremium) return homeVisible
         const q = norm(debouncedQuery)
-        if (!q) return lastFive
-        return lastFive.filter((t) => norm(t.description).includes(q) || norm(t.category).includes(q))
-    }, [lastFive, isPremium, debouncedQuery])
+        if (!q) return homeVisible
+        return homeVisible.filter((t) => norm(t.description).includes(q) || norm(t.category).includes(q))
+    }, [homeVisible, isPremium, debouncedQuery])
 
-    // creazione (Entrate/Uscite / +)
+    // creazione / modifica
     const openNewTransaction = (type) => {
         setEditingTx(null)
         setCreateType(type || "uscita")
@@ -176,23 +189,18 @@ export default function Home() {
 
     useEffect(() => {
         let ticking = false
-
         const onScroll = () => {
             if (ticking) return
             ticking = true
-
             window.requestAnimationFrame(() => {
                 const currentY = window.scrollY || 0
-
                 if (currentY < 8) setShowHeader(true)
                 else if (currentY > lastScrollY.current && currentY > 64) setShowHeader(false)
                 else if (currentY < lastScrollY.current) setShowHeader(true)
-
                 lastScrollY.current = currentY
                 ticking = false
             })
         }
-
         window.addEventListener("scroll", onScroll, { passive: true })
         return () => window.removeEventListener("scroll", onScroll)
     }, [])
@@ -212,7 +220,6 @@ export default function Home() {
                 ].join(" ")}
             >
                 <div className="pt-[env(safe-area-inset-top)]" />
-
                 <div className="mx-auto max-w-6xl px-3 py-2 md:px-4 md:py-3">
                     <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
@@ -220,7 +227,6 @@ export default function Home() {
                                 <span className="block md:hidden text-base">HAIP</span>
                                 <span className="hidden md:block text-lg">HOW AM I POOR</span>
                             </h1>
-
                             <p className={`text-xs ${muted} truncate max-w-[18rem] sm:max-w-none`}>
                                 <span className="md:hidden">I miei conti</span>
                                 <span className="hidden md:inline">I miei conti • local storage • giudizio quotidiano</span>
@@ -232,11 +238,19 @@ export default function Home() {
                                 <ThemeIcon className="h-4 w-4" />
                             </Button>
 
-                            <Button variant="outline" className="h-9 rounded-xl px-3 md:h-10 md:px-4" onClick={() => setPremiumHubOpen(true)}>
+                            <Button
+                                variant="outline"
+                                className="h-9 rounded-xl px-3 md:h-10 md:px-4"
+                                onClick={() => setPremiumHubOpen(true)}
+                            >
                                 Premium
                             </Button>
 
-                            <Button onClick={() => setShowReset(true)} variant="secondary" className="hidden md:inline-flex h-9 md:h-10 rounded-xl px-3 md:px-4">
+                            <Button
+                                onClick={() => setShowReset(true)}
+                                variant="secondary"
+                                className="hidden md:inline-flex h-9 md:h-10 rounded-xl px-3 md:px-4"
+                            >
                                 Reset
                             </Button>
                         </div>
@@ -261,10 +275,9 @@ export default function Home() {
                             balance={balance}
                             income={income}
                             expenses={expenses}
-                            onAdd={(type) => openNewTransaction(type)} // Entrate/Uscite => tipo preimpostato
+                            onAdd={(type) => openNewTransaction(type)}
                         />
 
-                        {/* Insight */}
                         <div className={`${surface} p-4 md:p-5`}>
                             <div className="flex items-start gap-3">
                                 <div className="mt-1 h-10 w-1.5 rounded-full bg-slate-900" />
@@ -370,7 +383,7 @@ export default function Home() {
                                     </button>
                                 </div>
 
-                                {/* search (Home): resta ma lavora sui 5 */}
+                                {/* search (Home): premium gated */}
                                 <div className="relative w-full min-w-0">
                                     <input
                                         value={isPremium ? query : ""}
@@ -379,7 +392,7 @@ export default function Home() {
                                         onClick={() => {
                                             if (!isPremium) openPremium("search")
                                         }}
-                                        placeholder={isPremium ? "Cerca (solo ultimi 5)..." : "Cerca movimenti (Premium)"}
+                                        placeholder={isPremium ? "Cerca (ultimi 5)..." : "Cerca movimenti (Premium)"}
                                         className={[
                                             "w-full max-w-full min-w-0 rounded-2xl border px-3 py-2 text-sm outline-none shadow-sm",
                                             "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
@@ -394,16 +407,49 @@ export default function Home() {
                                     )}
                                 </div>
 
-                                {/* lista breve */}
+                                {/* visibili */}
                                 <div className="w-full min-w-0 overflow-hidden">
                                     <TransactionList
-                                        transactions={filteredForHome}
+                                        transactions={searchedVisible}
                                         onDelete={handleDelete}
                                         onEdit={(tx) => openEditTransaction(tx)}
                                         isPremium={isPremium}
                                         onPremium={openPremium}
                                     />
                                 </div>
+
+                                {/* locked (blur intenso + overlay) */}
+                                {!isPremium && homeLocked.length > 0 && (
+                                    <div className="pt-3">
+                                        <div className="relative">
+                                            <div className="pointer-events-none select-none blur-[10px] opacity-60">
+                                                <TransactionList
+                                                    transactions={homeLocked}
+                                                    onDelete={() => {}}
+                                                    onEdit={() => {}}
+                                                    isPremium={false}
+                                                    onPremium={openPremium}
+                                                />
+                                            </div>
+
+                                            <div
+                                                className="absolute inset-0 rounded-3xl bg-[linear-gradient(to_bottom,rgba(0,0,0,0.10),rgba(0,0,0,0.45))]"
+                                                aria-hidden="true"
+                                            />
+
+                                            <div className="absolute inset-x-0 bottom-3 flex justify-center">
+                                                <button
+                                                    onClick={() => openPremium("history")}
+                                                    className="inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm bg-[rgb(var(--card))] border-[rgb(var(--border))] shadow-lg"
+                                                    title="Sblocca storico"
+                                                >
+                                                    <Lock className="h-4 w-4" />
+                                                    Storico Premium (oltre 30 giorni)
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -424,7 +470,7 @@ export default function Home() {
                 )}
             </main>
 
-            {/* Modale elenco completo */}
+            {/* Elenco completo */}
             <AllTransactionsDialog
                 open={allOpen}
                 onClose={() => setAllOpen(false)}
@@ -435,7 +481,7 @@ export default function Home() {
                 onDelete={handleDelete}
             />
 
-            {/* Modale add/edit */}
+            {/* Add/Edit */}
             <AddTransactionModal
                 key={`${isModalOpen}-${editingTx?.id ?? `new-${createType}`}`}
                 isOpen={isModalOpen}
