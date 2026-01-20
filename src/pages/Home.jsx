@@ -417,9 +417,12 @@ export default function Home() {
                             <a href="https://jhon-apps.github.io/how-am-i-poor/privacy.html" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80">
                                 Privacy Policy
                             </a>
+
                         </footer>
+                        <div className={`mt-10 text-center text-xs ${muted}`}>Built by JhonApps - jhon-apps.github.io</div>
+
                     </>
-                )}
+           )}
             </main>
 
             <AddTransactionModal
