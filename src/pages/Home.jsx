@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
-import { Plus, Lock, Moon, Sun } from "lucide-react"
+import { Plus, Lock, Moon, Sun, Settings as SettingsIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 import BalanceCard from "@/components/dashboard/BalanceCard"
@@ -10,9 +10,9 @@ import TransactionList from "@/components/dashboard/TransactionList"
 import AddTransactionModal from "@/components/transactions/AddTransactionModal"
 import AllTransactionsDialog from "@/components/transactions/AllTransactionsDialog"
 
-import ResetConfirmDialog from "@/components/ui/ResetConfirmDialog"
 import UndoToast from "@/components/ui/UndoToast"
 import PremiumUpsellDialog from "@/components/ui/PremiumUpsellDialog"
+import BillingNotReadyDialog from "@/components/ui/BillingNotReadyDialog"
 
 import PremiumHub from "@/components/premium/PremiumHub"
 import AdSlot from "@/components/ads/AdSlot"
@@ -38,52 +38,51 @@ function isWithinLastDays(dateISO, days) {
     return diff <= days * 24 * 60 * 60 * 1000
 }
 
-export default function Home() {
+export default function Home({ onOpenSettings }) {
+    // add/edit modal
     const [isModalOpen, setIsModalOpen] = useState(false)
-
-    // modifica reale
     const [editingTx, setEditingTx] = useState(null)
-
-    // creazione: tipo default (per +)
     const [createType, setCreateType] = useState("uscita")
 
-    // modale elenco completo
+    // all transactions dialog
     const [allOpen, setAllOpen] = useState(false)
 
-    const [showReset, setShowReset] = useState(false)
-
+    // left panel toggles
     const [leftView, setLeftView] = useState("chart")
     const [chartRange, setChartRange] = useState("30d")
 
+    // undo
     const [undoOpen, setUndoOpen] = useState(false)
     const [lastDeleted, setLastDeleted] = useState(null)
     const [undoTimer, setUndoTimer] = useState(null)
 
+    // premium flow
     const [premiumUpsellOpen, setPremiumUpsellOpen] = useState(false)
     const [premiumReason, setPremiumReason] = useState("premium")
     const [premiumHubOpen, setPremiumHubOpen] = useState(false)
+    const [billingNotReadyOpen, setBillingNotReadyOpen] = useState(false)
 
+    // search (home list only)
     const [query, setQuery] = useState("")
     const debouncedQuery = useDebouncedValue(query, 200)
 
-    const { isPremium, enablePremium } = usePremium()
+    // hooks
+    const { isPremium } = usePremium()
     const { adsConsent } = useAdsConsent()
-
     const { theme, toggleTheme } = useTheme()
     const ThemeIcon = theme === "dark" ? Moon : Sun
 
-    const { transactions, isLoading, add, update, remove, restore, reset, totals } = useTransactions()
+    const { transactions, isLoading, add, update, remove, restore, totals } = useTransactions()
     const { income, expenses, balance } = totals
 
     const hasAny = useMemo(() => transactions.length > 0, [transactions])
 
-    // snapshot Home: ultimi 5
+    // Home snapshot: ultimi 5
     const lastFive = useMemo(() => transactions.slice(0, 5), [transactions])
 
-    // split per blur >30 giorni (solo non premium)
+    // split per blur >30 giorni (solo non premium) sulla snapshot
     const { homeVisible, homeLocked } = useMemo(() => {
         if (isPremium) return { homeVisible: lastFive, homeLocked: [] }
-
         const v = []
         const l = []
         for (const t of lastFive) {
@@ -93,6 +92,7 @@ export default function Home() {
         return { homeVisible: v, homeLocked: l }
     }, [lastFive, isPremium])
 
+    // categorie recenti (per modal add)
     const recentCategories = useMemo(() => {
         const uniq = []
         for (const t of transactions) {
@@ -104,6 +104,7 @@ export default function Home() {
         return uniq
     }, [transactions])
 
+    // insight mese corrente
     const monthKey = useMemo(() => new Date().toISOString().slice(0, 7), [])
     const monthStats = useMemo(() => {
         const monthTx = transactions.filter((t) => String(t.date).slice(0, 7) === monthKey)
@@ -119,23 +120,26 @@ export default function Home() {
         return `Questo mese sei a ${formatEUR(monthStats.net)}. Continua così (finché dura).`
     }, [hasAny, balance, monthStats.net])
 
+    // cleanup timer undo
     useEffect(() => {
         return () => {
             if (undoTimer) clearTimeout(undoTimer)
         }
     }, [undoTimer])
 
+    // premium opener (upsell)
     const openPremium = (reason) => {
-        setPremiumReason(reason)
+        setPremiumReason(reason || "premium")
         setPremiumUpsellOpen(true)
     }
 
-    // ✅ FIX stacking: chiudi prima la modale "Tutti i movimenti", poi apri Premium
+    // called from AllTransactionsDialog: close it, then open upsell
     const openPremiumFromAllDialog = (reason) => {
         setAllOpen(false)
-        openPremium(reason)
+        setTimeout(() => openPremium(reason), 0)
     }
 
+    // delete with undo
     const handleDelete = (id) => {
         const tx = transactions.find((t) => t.id === id)
         if (!tx) return
@@ -162,6 +166,7 @@ export default function Home() {
         setLastDeleted(null)
     }
 
+    // chart range (premium for "all")
     const effectiveRange = isPremium ? chartRange : "30d"
 
     const chartTransactions = useMemo(() => {
@@ -169,6 +174,7 @@ export default function Home() {
         return transactions.filter((t) => isWithinLastDays(t.date, 30))
     }, [transactions, effectiveRange])
 
+    // search in home list (premium gated) — solo sugli item visibili
     const searchedVisible = useMemo(() => {
         if (!isPremium) return homeVisible
         const q = norm(debouncedQuery)
@@ -176,6 +182,7 @@ export default function Home() {
         return homeVisible.filter((t) => norm(t.description).includes(q) || norm(t.category).includes(q))
     }, [homeVisible, isPremium, debouncedQuery])
 
+    // open create/edit modal
     const openNewTransaction = (type) => {
         setEditingTx(null)
         setCreateType(type || "uscita")
@@ -187,27 +194,36 @@ export default function Home() {
         setIsModalOpen(true)
     }
 
+    /**
+     * HEADER: hide on scroll
+     */
     const [showHeader, setShowHeader] = useState(true)
     const lastScrollY = useRef(0)
 
     useEffect(() => {
         let ticking = false
+
         const onScroll = () => {
             if (ticking) return
             ticking = true
+
             window.requestAnimationFrame(() => {
                 const currentY = window.scrollY || 0
+
                 if (currentY < 8) setShowHeader(true)
                 else if (currentY > lastScrollY.current && currentY > 64) setShowHeader(false)
                 else if (currentY < lastScrollY.current) setShowHeader(true)
+
                 lastScrollY.current = currentY
                 ticking = false
             })
         }
+
         window.addEventListener("scroll", onScroll, { passive: true })
         return () => window.removeEventListener("scroll", onScroll)
     }, [])
 
+    // styles
     const surface = "rounded-3xl border shadow-sm bg-[rgb(var(--card))] border-[rgb(var(--border))]"
     const surfaceSoft = "rounded-2xl border shadow-sm bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
     const muted = "text-[rgb(var(--muted-fg))]"
@@ -223,59 +239,71 @@ export default function Home() {
                 ].join(" ")}
             >
                 <div className="pt-[env(safe-area-inset-top)]" />
+
                 <div className="mx-auto max-w-6xl px-3 py-2 md:px-4 md:py-3">
                     <div className="flex items-center justify-between gap-2">
+                        {/* LEFT */}
                         <div className="min-w-0">
                             <h1 className="font-extrabold tracking-tight leading-tight">
                                 <span className="block md:hidden text-base">HAIP</span>
                                 <span className="hidden md:block text-lg">HOW AM I POOR</span>
                             </h1>
+
                             <p className={`text-xs ${muted} truncate max-w-[18rem] sm:max-w-none`}>
                                 <span className="md:hidden">I miei conti</span>
                                 <span className="hidden md:inline">I miei conti • local storage • giudizio quotidiano</span>
                             </p>
                         </div>
 
+                        {/* RIGHT */}
                         <div className="flex items-center gap-2 shrink-0">
-                            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Cambia tema">
-                                <ThemeIcon className="h-4 w-4" />
-                            </Button>
-
-                            {/* Seed: temporaneo */}
-                            {/*<button*/}
-                            {/*    type="button"*/}
-                            {/*    onClick={async () => {*/}
-                            {/*        const { seedTransactions } = await import("@/dev/seedTransactions")*/}
-                            {/*        const count = seedTransactions(1200)*/}
-                            {/*        console.log("Seeded:", count)*/}
-                            {/*        location.reload()*/}
-                            {/*    }}*/}
-                            {/*    className="inline-flex h-9 rounded-xl px-3 text-sm border bg-[rgb(var(--card-2))] border-[rgb(var(--border))] hover:opacity-90"*/}
-                            {/*    title="DEV: seed 1200 movimenti"*/}
-                            {/*>*/}
-                            {/*    Seed 1200*/}
-                            {/*</button>*/}
-
                             <Button
                                 variant="outline"
                                 className="h-9 rounded-xl px-3 md:h-10 md:px-4"
                                 onClick={() => setPremiumHubOpen(true)}
+                                title="Premium"
                             >
-                                Premium
+                                <motion.span
+                                    animate={{
+                                        opacity: [1, 0.85, 1],
+                                        textShadow: [
+                                            "0 0 0px rgba(0,0,0,0)",
+                                            "0 0 14px rgba(251,191,36,0.85)",
+                                            "0 0 0px rgba(0,0,0,0)",
+                                        ],
+                                    }}
+                                    transition={{
+                                        duration: 1.2,
+                                        repeat: Infinity,
+                                        repeatDelay: 2.2,   // 🔥 più spesso
+                                        ease: "easeInOut",
+                                    }}
+                                    className="text-amber-300 font-extrabold tracking-wide"
+                                >
+                                    Premium
+                                </motion.span>
+                            </Button>
+
+                            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Cambia tema">
+                                <ThemeIcon className="h-4 w-4" />
                             </Button>
 
                             <Button
-                                onClick={() => setShowReset(true)}
-                                variant="secondary"
-                                className="hidden md:inline-flex h-9 md:h-10 rounded-xl px-3 md:px-4"
+                                variant="ghost"
+                                size="icon"
+                                onClick={onOpenSettings}
+                                aria-label="Impostazioni"
+                                title="Impostazioni"
+                                className="h-9 w-9 rounded-xl"
                             >
-                                Reset
+                                <SettingsIcon className="h-5 w-5" />
                             </Button>
                         </div>
                     </div>
                 </div>
             </div>
 
+            {/* Spacer per header fixed */}
             <div className="h-[64px] md:h-[72px]" />
 
             <main className="mx-auto max-w-6xl px-3 sm:px-4 py-5 md:py-8 space-y-5 md:space-y-6 pb-16">
@@ -291,6 +319,7 @@ export default function Home() {
                     <>
                         <BalanceCard balance={balance} income={income} expenses={expenses} onAdd={(type) => openNewTransaction(type)} />
 
+                        {/* Insight */}
                         <div className={`${surface} p-4 md:p-5`}>
                             <div className="flex items-start gap-3">
                                 <div className="mt-1 h-10 w-1.5 rounded-full bg-slate-900" />
@@ -302,7 +331,9 @@ export default function Home() {
                                         <p className={`text-xs font-semibold uppercase tracking-wide ${muted}`}>Verdetto del giorno</p>
                                     </div>
 
-                                    <p className="mt-2 text-base md:text-lg font-extrabold tracking-tight leading-snug select-none">{insightText}</p>
+                                    <p className="mt-2 text-base md:text-lg font-extrabold tracking-tight leading-snug select-none">
+                                        {insightText}
+                                    </p>
 
                                     {hasAny && (
                                         <p className={`mt-2 text-xs ${muted}`}>
@@ -348,6 +379,7 @@ export default function Home() {
                                                 "px-3 py-2 text-sm rounded-xl transition whitespace-nowrap",
                                                 effectiveRange === "30d" ? "bg-slate-900 text-white" : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
                                             ].join(" ")}
+                                            title="Ultimi 30 giorni"
                                         >
                                             30 giorni
                                         </button>
@@ -373,7 +405,11 @@ export default function Home() {
                                 </div>
 
                                 <div className="w-full min-w-0 overflow-hidden">
-                                    {leftView === "chart" ? <ExpenseChart transactions={chartTransactions} /> : <CategoryBreakdownList transactions={chartTransactions} />}
+                                    {leftView === "chart" ? (
+                                        <ExpenseChart transactions={chartTransactions} />
+                                    ) : (
+                                        <CategoryBreakdownList transactions={chartTransactions} />
+                                    )}
                                 </div>
                             </div>
 
@@ -410,7 +446,6 @@ export default function Home() {
                                             !isPremium ? "cursor-pointer pr-10" : "",
                                         ].join(" ")}
                                     />
-
                                     {!isPremium && (
                                         <div className={`absolute right-3 top-1/2 -translate-y-1/2 ${muted} pointer-events-none`}>
                                             <Lock className="h-4 w-4" />
@@ -474,23 +509,22 @@ export default function Home() {
                                 Privacy Policy
                             </a>
                         </footer>
+
                         <div className={`mt-10 text-center text-xs ${muted}`}>Built by JhonApps - jhon-apps.github.io</div>
                     </>
                 )}
             </main>
 
-            {/* Elenco completo */}
             <AllTransactionsDialog
                 open={allOpen}
                 onClose={() => setAllOpen(false)}
                 transactions={transactions}
                 isPremium={isPremium}
-                onPremium={openPremiumFromAllDialog}   // ✅ qui la fix
+                onPremium={openPremiumFromAllDialog}
                 onEdit={(tx) => openEditTransaction(tx)}
                 onDelete={handleDelete}
             />
 
-            {/* Add/Edit */}
             <AddTransactionModal
                 key={`${isModalOpen}-${editingTx?.id ?? `new-${createType}`}`}
                 isOpen={isModalOpen}
@@ -511,15 +545,6 @@ export default function Home() {
                 isLoading={false}
             />
 
-            <ResetConfirmDialog
-                open={showReset}
-                onClose={() => setShowReset(false)}
-                onConfirm={() => {
-                    reset()
-                    setShowReset(false)
-                }}
-            />
-
             <UndoToast
                 open={undoOpen}
                 message="Movimento eliminato."
@@ -535,15 +560,20 @@ export default function Home() {
                 open={premiumUpsellOpen}
                 reason={premiumReason}
                 onClose={() => setPremiumUpsellOpen(false)}
-                onConfirm={() => {
-                    enablePremium()
-                    setPremiumUpsellOpen(false)
-                }}
+                onConfirm={() => setPremiumHubOpen(true)}
             />
 
-            <PremiumHub open={premiumHubOpen} onClose={() => setPremiumHubOpen(false)} isPremium={isPremium} onSubscribe={() => enablePremium()} />
+            <PremiumHub
+                open={premiumHubOpen}
+                onClose={() => setPremiumHubOpen(false)}
+                onBillingNotReady={() => setBillingNotReadyOpen(true)}
+            />
 
-            {/* FAB */}
+            <BillingNotReadyDialog
+                open={billingNotReadyOpen}
+                onClose={() => setBillingNotReadyOpen(false)}
+            />
+
             <motion.button
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}

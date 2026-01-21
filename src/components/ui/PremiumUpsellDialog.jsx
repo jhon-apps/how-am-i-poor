@@ -6,6 +6,13 @@ export default function PremiumUpsellDialog({ open, onClose, onConfirm, reason =
     const sub = "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
     const muted = "text-[rgb(var(--muted-fg))]"
 
+    const handleUnlock = () => {
+        // 1) chiudi upsell
+        onClose?.()
+        // 2) apri PremiumHub subito dopo (evita modali sovrapposte)
+        setTimeout(() => onConfirm?.(), 0)
+    }
+
     return (
         <Dialog open={open} onOpenChange={(v) => !v && onClose?.()}>
             {/* ✅ bordo “serio” visibile in dark e ok in light */}
@@ -66,7 +73,9 @@ export default function PremiumUpsellDialog({ open, onClose, onConfirm, reason =
                     <Button variant="outline" onClick={onClose}>
                         Non ora
                     </Button>
-                    <Button onClick={onConfirm}>Sblocca Premium</Button>
+
+                    {/* ✅ chiude Upsell e apre PremiumHub */}
+                    <Button onClick={handleUnlock}>Sblocca Premium</Button>
                 </div>
 
                 <p className={`mt-4 text-xs ${muted}`}>Nota: Billing non ancora attivo in questa versione.</p>
