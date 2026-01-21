@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowLeft, ArrowRight, Check, Sparkles, Wallet, Search, Bell, Lock } from "lucide-react"
+import {
+    ArrowLeft,
+    ArrowRight,
+    Check,
+    Sparkles,
+    Wallet,
+    Search,
+    Bell,
+    Lock,
+    Settings as SettingsIcon,
+    ListChecks,
+    PieChart,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const USER_KEY = "howamipoor:user:v1"
@@ -25,12 +37,20 @@ function markOnboardingDone() {
     localStorage.setItem(ONBOARDING_KEY, JSON.stringify({ done: true, ts: Date.now() }))
 }
 
-export default function Onboarding({ onFinish }) {
+/**
+ * mode:
+ * - "firstRun": tutorial mostrato alla prima apertura
+ * - "manual": tutorial avviato dalle impostazioni
+ *
+ * In entrambi i casi NON mostriamo funzioni DEV.
+ * Manteniamo la pagina "nome" (come richiesto).
+ */
+export default function Onboarding({ onFinish, mode = "firstRun" }) {
     const [step, setStep] = useState(0)
     const [name, setName] = useState(readUserName())
 
     useEffect(() => {
-        // salva in tempo reale, così se l'utente abbandona non perdi
+        // salva in tempo reale
         writeUserName(name)
     }, [name])
 
@@ -42,52 +62,105 @@ export default function Onboarding({ onFinish }) {
                 subtitle: "HOW AM I POOR, ma con dati veri.",
                 icon: Sparkles,
                 body:
-                    "App local-first. Zero scuse.\n" +
-                    "Ti aiuto a tenere traccia di entrate/uscite e a giudicare con stile.",
+                    "App local-first: resta tutto sul tuo dispositivo.\n" +
+                    "Entrate, uscite, grafici e un pizzico di giudizio (pulito).",
             },
             {
                 key: "name",
                 title: "Come ti chiami?",
-                subtitle: "Così posso giudicarti in modo personale 😈",
+                subtitle: "Così posso essere personale 😈",
                 icon: Wallet,
-                body: "Il nome verrà usato in messaggi e notifiche. Puoi lasciarlo vuoto.",
+                body:
+                    "Userò il tuo nome in messaggi e notifiche.\n" +
+                    "Puoi lasciarlo vuoto, ma perderai parte del divertimento.",
                 input: true,
             },
             {
                 key: "add",
-                title: "Aggiungi movimenti in 2 tap",
-                subtitle: "Entrate / Uscite aprono la stessa modale del +",
+                title: "Aggiungi movimenti velocemente",
+                subtitle: "Entrate / Uscite + pulsante +",
                 icon: Wallet,
                 body:
-                    "Aggiungi descrizione, importo e categoria.\n" +
-                    "Poi HAIP fa il resto (e ti ricorda quando dimentichi).",
+                    "Registra un movimento in pochi secondi.\n" +
+                    "L’app prova anche a suggerire la categoria automaticamente.",
+                bullets: ["Entrata / Uscita", "Categoria suggerita", "Modifica e eliminazione"],
             },
             {
-                key: "history",
-                title: "Lista completa + filtro giorno",
-                subtitle: "Vedi tutti i movimenti senza distruggere la Home",
+                key: "home",
+                title: "Home = panoramica pulita",
+                subtitle: "Non una lista infinita",
+                icon: ListChecks,
+                body:
+                    "In Home vedi sempre e solo gli ultimi 5 movimenti.\n" +
+                    "Per l’elenco completo usi “Vedi tutti”.",
+                bullets: ["Saldo, entrate/uscite", "Stato mese corrente", "Ultimi 5 movimenti"],
+            },
+            {
+                key: "charts",
+                title: "Grafici e categorie",
+                subtitle: "Capisci dove vanno i soldi",
+                icon: PieChart,
+                body:
+                    "Grafico e breakdown categorie (di default sugli ultimi 30 giorni).\n" +
+                    "Così hai una vista chiara senza troppo rumore.",
+                bullets: ["Grafico spese", "Breakdown categorie", "Range 30 giorni (FREE)"],
+            },
+            {
+                key: "all",
+                title: "Elenco completo + filtro giorno",
+                subtitle: "Trovi tutto senza distruggere la Home",
                 icon: Search,
                 body:
-                    "La Home mostra solo gli ultimi 5.\n" +
-                    "“Vedi tutti” apre l’elenco completo con filtro per data.",
+                    "“Vedi tutti” apre l’elenco completo.\n" +
+                    "Puoi filtrare per giorno (calendario).",
+                bullets: ["Lista completa", "Filtro per giorno", "Esperienza fluida anche con tanti record"],
+            },
+            {
+                key: "freeLimit",
+                title: "Storico oltre 30 giorni",
+                subtitle: "FREE = blur, Premium = sblocco",
+                icon: Lock,
+                body:
+                    "Se non sei Premium, i movimenti oltre 30 giorni vengono sfocati.\n" +
+                    "È la linea di confine principale.",
+                bullets: ["≤ 30 giorni: visibili", "> 30 giorni: blur + blocco", "Iscriviti per sbloccare"],
+            },
+            {
+                key: "premium",
+                title: "Cosa sblocca Premium",
+                subtitle: "Memoria + ricerca + zero ads",
+                icon: Lock,
+                body:
+                    "Premium sblocca davvero ciò che serve:\n" +
+                    "- storico completo (niente blur)\n" +
+                    "- ricerca completa\n" +
+                    "- niente pubblicità\n\n" +
+                    "Premium si attiverà tramite Google Play Billing quando sarà pronto.",
+                bullets: ["Storico completo", "Ricerca completa", "No ads"],
             },
             {
                 key: "notifications",
                 title: "Notifiche utili",
-                subtitle: "Reminder giornaliero + inattività (5 giorni)",
+                subtitle: "Reminder + inattività",
                 icon: Bell,
                 body:
-                    "Se vuoi, ti ricordo ogni giorno di aggiornare i movimenti.\n" +
-                    "E se sparisci, HAIP se ne accorge.",
+                    "Puoi attivare un promemoria giornaliero.\n" +
+                    "E una notifica se non usi l’app per 5 giorni.\n\n" +
+                    "Se un telefono blocca le notifiche, trovi le istruzioni in Impostazioni.",
+                bullets: ["Reminder giornaliero", "Inattività 5 giorni", "Guida permessi/batteria in Settings"],
             },
             {
-                key: "premium",
-                title: "Premium (quando vuoi)",
-                subtitle: "Ricerca completa + storico oltre 30 giorni + no ads",
-                icon: Lock,
+                key: "settings",
+                title: "Impostazioni & tema",
+                subtitle: "Tutto al suo posto",
+                icon: SettingsIcon,
                 body:
-                    "Premium si attiva solo tramite Google Play Billing (quando sarà pronto).\n" +
-                    "In dev puoi simulare per test.",
+                    "In Impostazioni trovi:\n" +
+                    "- nome\n" +
+                    "- notifiche\n" +
+                    "- reset\n" +
+                    "- privacy\n\n" +
+                    "E in Home puoi cambiare tema con un tap.",
             },
         ]
     }, [])
@@ -102,6 +175,7 @@ export default function Onboarding({ onFinish }) {
     const prev = () => setStep((s) => Math.max(s - 1, 0))
 
     const finish = () => {
+        // segna completato: evita che si ripresenti da solo
         markOnboardingDone()
         onFinish?.()
     }
@@ -126,6 +200,7 @@ export default function Onboarding({ onFinish }) {
                         {step + 1}/{total}
                     </p>
 
+                    {/* In firstRun puoi saltare, in manual è comunque ok */}
                     <button
                         onClick={finish}
                         className="text-xs underline text-[rgb(var(--muted-fg))] hover:opacity-80"
@@ -156,18 +231,22 @@ export default function Onboarding({ onFinish }) {
                                 </div>
 
                                 <div className="min-w-0">
-                                    <h1 className="text-lg font-extrabold tracking-tight leading-tight">
-                                        {current.title}
-                                    </h1>
-                                    <p className="mt-1 text-sm text-[rgb(var(--muted-fg))]">
-                                        {current.subtitle}
-                                    </p>
+                                    <h1 className="text-lg font-extrabold tracking-tight leading-tight">{current.title}</h1>
+                                    <p className="mt-1 text-sm text-[rgb(var(--muted-fg))]">{current.subtitle}</p>
                                 </div>
                             </div>
 
                             <p className="mt-5 whitespace-pre-line text-sm leading-relaxed text-[rgb(var(--fg))]">
                                 {current.body}
                             </p>
+
+                            {current.bullets?.length > 0 && (
+                                <ul className="mt-4 space-y-2 text-sm text-[rgb(var(--muted-fg))] list-disc pl-5">
+                                    {current.bullets.map((b) => (
+                                        <li key={b}>{b}</li>
+                                    ))}
+                                </ul>
+                            )}
 
                             {current.input && (
                                 <div className="mt-5">
@@ -192,22 +271,14 @@ export default function Onboarding({ onFinish }) {
                     {/* progress bar */}
                     <div className="px-6 pb-6">
                         <div className="h-2 rounded-full bg-[rgb(var(--card-2))] border border-[rgb(var(--border))] overflow-hidden">
-                            <div
-                                className="h-full bg-slate-900"
-                                style={{ width: `${((step + 1) / total) * 100}%` }}
-                            />
+                            <div className="h-full bg-slate-900" style={{ width: `${((step + 1) / total) * 100}%` }} />
                         </div>
                     </div>
                 </div>
 
                 {/* controls */}
                 <div className="mt-5 flex items-center justify-between gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={prev}
-                        disabled={!canPrev}
-                        className="rounded-2xl"
-                    >
+                    <Button variant="outline" onClick={prev} disabled={!canPrev} className="rounded-2xl">
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Indietro
                     </Button>
