@@ -45,9 +45,10 @@ export default function CategoryBreakdownList({ transactions = [] }) {
 
                                 <div className={`mt-1 h-2 w-48 max-w-full rounded-full overflow-hidden ${track}`}>
                                     <div
-                                        className="h-full bg-slate-900/60"
+                                        className="h-full bg-slate-500/70"
                                         style={{ width: `${pct}%` }}
                                     />
+
                                 </div>
                             </div>
 

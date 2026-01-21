@@ -1,9 +1,20 @@
 import { useEffect, useState } from "react"
-import { ArrowLeft, Bell, RotateCcw, User, Clock, Beaker, ExternalLink, ShieldAlert, HelpCircle } from "lucide-react"
+import {
+    ArrowLeft,
+    Bell,
+    RotateCcw,
+    User,
+    Clock,
+    Beaker,
+    ExternalLink,
+    ShieldAlert,
+    HelpCircle,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import ResetConfirmDialog from "@/components/ui/ResetConfirmDialog"
 import useTransactions from "@/hooks/useTransactions"
 import { applyNotificationSettings, debugTestNotification } from "@/services/notifications"
+import { APP_CONFIG } from "@/config/config"
 
 const USER_KEY = "howamipoor:user:v1"
 const SETTINGS_KEY = "howamipoor:settings:v1"
@@ -178,7 +189,7 @@ export default function Settings({ onBack }) {
             </div>
 
             <main className="mx-auto max-w-3xl px-3 py-5 space-y-4 pb-10">
-                {/* ✅ Aiuto / Tutorial */}
+                {/* Aiuto / Tutorial */}
                 <section className={`${surface} p-4`}>
                     <div className="flex items-center gap-2">
                         <div className={`h-10 w-10 rounded-2xl border ${soft} flex items-center justify-center`}>
@@ -191,13 +202,8 @@ export default function Settings({ onBack }) {
                     </div>
 
                     <div className="mt-4 flex items-center gap-2">
-                        <Button onClick={() => (window.location.hash = "#/onboarding")}>
-                            Rivedi tutorial
-                        </Button>
-
-                        <Button variant="outline" onClick={onBack}>
-                            Torna alla Home
-                        </Button>
+                        <Button onClick={() => (window.location.hash = "#/onboarding")}>Rivedi tutorial</Button>
+                        <Button variant="outline" onClick={onBack}>Torna alla Home</Button>
                     </div>
                 </section>
 
@@ -242,6 +248,7 @@ export default function Settings({ onBack }) {
 
                     {notifStatus && <p className={`mt-3 text-xs ${mutedClass}`}>{notifStatus}</p>}
 
+                    {/* Help box permessi/batteria */}
                     {nativeInfo.isNative && (
                         <div className={`mt-4 rounded-2xl border p-3 ${soft}`}>
                             <div className="flex items-start gap-2">
@@ -249,8 +256,7 @@ export default function Settings({ onBack }) {
                                 <div className="min-w-0">
                                     <p className="text-sm font-semibold">Se le notifiche non arrivano…</p>
                                     <p className={`mt-1 text-xs ${mutedClass}`}>
-                                        Su alcuni telefoni Android, se chiudi l’app dai “Recenti” o hai risparmio batteria aggressivo,
-                                        le notifiche possono essere bloccate.
+                                        Se chiudi l’app dai “Recenti” o hai risparmio batteria aggressivo, alcune ROM bloccano le notifiche.
                                     </p>
 
                                     <ul className={`mt-2 text-xs ${mutedClass} list-disc pl-5 space-y-1`}>
@@ -342,18 +348,21 @@ export default function Settings({ onBack }) {
                             />
                         </div>
 
-                        <div className="pt-2">
-                            <Button
-                                variant="outline"
-                                onClick={async () => {
-                                    const res = await debugTestNotification()
-                                    setNotifStatus(res.ok ? "Notifica test schedulata (5s) ✅" : `Test fallito: ${res.reason}`)
-                                    setTimeout(() => setNotifStatus(""), 2500)
-                                }}
-                            >
-                                Test notifica (5s)
-                            </Button>
-                        </div>
+                        {/* ✅ Test notifica SOLO DEV */}
+                        {APP_CONFIG.DEV_TOOLS_ENABLED && (
+                            <div className="pt-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={async () => {
+                                        const res = await debugTestNotification()
+                                        setNotifStatus(res.ok ? "Notifica test schedulata (5s) ✅" : `Test fallito: ${res.reason}`)
+                                        setTimeout(() => setNotifStatus(""), 2500)
+                                    }}
+                                >
+                                    Test notifica (5s)
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </section>
 
@@ -376,36 +385,38 @@ export default function Settings({ onBack }) {
                     </div>
                 </section>
 
-                {/* Developer */}
-                <section className={`${surface} p-4`}>
-                    <div className="flex items-center gap-2">
-                        <div className={`h-10 w-10 rounded-2xl border ${soft} flex items-center justify-center`}>
-                            <Beaker className="h-4 w-4" />
+                {/* ✅ Developer section SOLO DEV */}
+                {APP_CONFIG.DEV_TOOLS_ENABLED && (
+                    <section className={`${surface} p-4`}>
+                        <div className="flex items-center gap-2">
+                            <div className={`h-10 w-10 rounded-2xl border ${soft} flex items-center justify-center`}>
+                                <Beaker className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="font-semibold">Developer</p>
+                                <p className={`text-xs ${mutedClass}`}>Strumenti temporanei per test.</p>
+                            </div>
                         </div>
-                        <div className="min-w-0">
-                            <p className="font-semibold">Developer</p>
-                            <p className={`text-xs ${mutedClass}`}>Strumenti temporanei per test.</p>
+
+                        <div className="mt-4 flex items-center gap-2">
+                            <Button
+                                onClick={async () => {
+                                    const { seedTransactions } = await import("@/dev/seedTransactions")
+                                    seedTransactions(1200)
+                                    location.reload()
+                                }}
+                            >
+                                Seed 1200
+                            </Button>
+
+                            <Button variant="outline" onClick={onBack}>
+                                Torna alla Home
+                            </Button>
                         </div>
-                    </div>
 
-                    <div className="mt-4 flex items-center gap-2">
-                        <Button
-                            onClick={async () => {
-                                const { seedTransactions } = await import("@/dev/seedTransactions")
-                                seedTransactions(1200)
-                                location.reload()
-                            }}
-                        >
-                            Seed 1200
-                        </Button>
-
-                        <Button variant="outline" onClick={onBack}>
-                            Torna alla Home
-                        </Button>
-                    </div>
-
-                    <p className={`mt-3 text-xs ${mutedClass}`}>Lo rimuoviamo prima della build finale.</p>
-                </section>
+                        <p className={`mt-3 text-xs ${mutedClass}`}>Lo rimuoviamo prima della build finale.</p>
+                    </section>
+                )}
 
                 {/* Privacy */}
                 <section className={`${surface} p-4`}>

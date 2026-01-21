@@ -64,10 +64,6 @@ export default function PremiumHub({ open, onClose, onBillingNotReady }) {
                                 Storico completo (oltre 30 giorni)
                             </li>
                             <li className="flex gap-3">
-                                <FileSpreadsheet className={`h-4 w-4 ${muted}`} />
-                                Export Excel (in arrivo)
-                            </li>
-                            <li className="flex gap-3">
                                 <Lock className={`h-4 w-4 ${muted}`} />
                                 Rimozione totale della pubblicità
                             </li>
@@ -76,7 +72,7 @@ export default function PremiumHub({ open, onClose, onBillingNotReady }) {
 
                     <div className={`rounded-3xl border p-6 flex items-center justify-between shadow-sm ${soft}`}>
                         <div>
-                            <p className="font-semibold">5,00 € / mese</p>
+                            <p className="font-semibold">7,00 € / mese</p>
                             <p className={`text-xs ${muted}`}>Annulla quando vuoi</p>
                         </div>
 

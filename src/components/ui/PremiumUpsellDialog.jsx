@@ -47,12 +47,6 @@ export default function PremiumUpsellDialog({ open, onClose, onConfirm, reason =
                         <Clock3 className={`h-5 w-5 ${muted}`} />
                         <span>Storico completo (oltre 30 giorni)</span>
                     </div>
-
-                    <div className="flex items-center gap-3">
-                        <FileSpreadsheet className={`h-5 w-5 ${muted}`} />
-                        <span>Export Excel (in arrivo)</span>
-                    </div>
-
                     <div className="flex items-center gap-3">
                         <BadgeCheck className={`h-5 w-5 ${muted}`} />
                         <span>Niente pubblicità</span>
@@ -62,7 +56,7 @@ export default function PremiumUpsellDialog({ open, onClose, onConfirm, reason =
                 <div className={`mt-5 rounded-2xl border p-4 ${sub}`}>
                     <div className="flex items-center justify-between gap-3">
                         <div>
-                            <p className="text-lg font-extrabold">5,00 € / mese</p>
+                            <p className="text-lg font-extrabold">7,00 € / mese</p>
                             <p className={`text-sm ${muted}`}>Annulla quando vuoi</p>
                         </div>
                         <p className={`text-sm ${muted}`}>Google Play</p>
