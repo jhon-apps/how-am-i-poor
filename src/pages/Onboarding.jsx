@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
     ArrowLeft,
@@ -12,6 +12,7 @@ import {
     Settings as SettingsIcon,
     ListChecks,
     PieChart,
+    Target,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -48,13 +49,26 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
     const pages = useMemo(() => {
         return [
             {
+                key: "purpose",
+                title: "A cosa serve HAIP",
+                subtitle: "Spoiler: a smettere di fingere.",
+                icon: Target,
+                body:
+                    "HAIP ti serve per una cosa semplice:\n" +
+                    "sapere dove finiscono i soldi.\n\n" +
+                    "Non ti faccio la morale.\n" +
+                    "Ti mostro i numeri.\n" +
+                    "Poi sei tu a soffrire.",
+                bullets: ["Entrate/Uscite chiare", "Storico consultabile", "Notifiche se sparisci"],
+            },
+            {
                 key: "welcome",
                 title: "Benvenuto in HAIP",
                 subtitle: "HOW AM I POOR, ma con dati veri.",
                 icon: Sparkles,
                 body:
                     "App local-first: resta tutto sul tuo dispositivo.\n" +
-                    "Entrate, uscite, grafici e un pizzico di giudizio (pulito).",
+                    "Grafici, categorie e un pizzico di giudizio (pulito).",
             },
             {
                 key: "name",
@@ -104,7 +118,7 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                 body:
                     "“Vedi tutti” apre l’elenco completo.\n" +
                     "Puoi filtrare per giorno (calendario).",
-                bullets: ["Lista completa", "Filtro per giorno", "Esperienza fluida anche con tanti record"],
+                bullets: ["Lista completa", "Filtro per giorno", "Fluido anche con tanti record"],
             },
             {
                 key: "freeLimit",
@@ -113,7 +127,7 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                 icon: Lock,
                 body:
                     "Se non sei Premium, i movimenti oltre 30 giorni vengono sfocati.\n" +
-                    "È la linea di confine principale.",
+                    "È il modo di HAIP per dirti: “decidi se ti interessa davvero”.",
                 bullets: ["≤ 30 giorni: visibili", "> 30 giorni: blur + blocco", "Iscriviti per sbloccare"],
             },
             {
@@ -171,11 +185,34 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
         onFinish?.()
     }
 
-    // swipe gesture
-    const swipeThreshold = 80
-    const handleDragEnd = (_, info) => {
-        if (info.offset.x < -swipeThreshold && canNext) next()
-        if (info.offset.x > swipeThreshold && canPrev) prev()
+    // ✅ Swipe gesture robusto (funziona anche con scroll verticale interno)
+    const startRef = useRef({ x: 0, y: 0, t: 0 })
+    const onTouchStart = (e) => {
+        const touch = e.touches?.[0]
+        if (!touch) return
+        startRef.current = { x: touch.clientX, y: touch.clientY, t: Date.now() }
+    }
+    const onTouchEnd = (e) => {
+        const touch = e.changedTouches?.[0]
+        if (!touch) return
+
+        const dx = touch.clientX - startRef.current.x
+        const dy = touch.clientY - startRef.current.y
+        const dt = Date.now() - startRef.current.t
+
+        // gesture troppo lenta -> probabilmente scroll/lettura
+        if (dt > 700) return
+
+        const absX = Math.abs(dx)
+        const absY = Math.abs(dy)
+
+        // se è più verticale, ignoriamo (scroll)
+        if (absY > absX) return
+
+        // soglia swipe
+        const threshold = 70
+        if (dx < -threshold && canNext) next()
+        if (dx > threshold && canPrev) prev()
     }
 
     // styles
@@ -185,10 +222,9 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
 
     return (
         <div className="min-h-screen w-full bg-[rgb(var(--bg))] text-[rgb(var(--fg))] overflow-hidden flex flex-col">
-            {/* safe area top */}
             <div className="pt-[env(safe-area-inset-top)]" />
 
-            {/* HEADER FULL WIDTH */}
+            {/* HEADER */}
             <div className={`border-b ${surface}`}>
                 <div className="px-4 py-3 flex items-center justify-between gap-3">
                     <p className={`text-xs ${muted}`}>
@@ -204,19 +240,15 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                     </button>
                 </div>
 
-                {/* progress */}
                 <div className="px-4 pb-3">
                     <div className={`h-2 rounded-full overflow-hidden border ${soft}`}>
-                        <div
-                            className="h-full bg-slate-900"
-                            style={{ width: `${((step + 1) / total) * 100}%` }}
-                        />
+                        <div className="h-full bg-slate-900" style={{ width: `${((step + 1) / total) * 100}%` }} />
                     </div>
                 </div>
             </div>
 
-            {/* CONTENT FULL SCREEN */}
-            <div className="flex-1 min-h-0">
+            {/* CONTENT */}
+            <div className="flex-1 min-h-0" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={current.key}
@@ -225,12 +257,7 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -24 }}
                         transition={{ duration: 0.22 }}
-                        drag="x"
-                        dragConstraints={{ left: 0, right: 0 }}
-                        dragElastic={0.08}
-                        onDragEnd={handleDragEnd}
                     >
-                        {/* scroll interno solo per contenuti lunghi */}
                         <div className="h-full overflow-y-auto px-4 py-6">
                             <div className="mx-auto max-w-md">
                                 <div className="flex items-start gap-4">
@@ -239,16 +266,12 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                                     </div>
 
                                     <div className="min-w-0">
-                                        <h1 className="text-xl font-extrabold tracking-tight leading-tight">
-                                            {current.title}
-                                        </h1>
+                                        <h1 className="text-xl font-extrabold tracking-tight leading-tight">{current.title}</h1>
                                         <p className={`mt-1 text-sm ${muted}`}>{current.subtitle}</p>
                                     </div>
                                 </div>
 
-                                <p className="mt-5 whitespace-pre-line text-sm leading-relaxed">
-                                    {current.body}
-                                </p>
+                                <p className="mt-5 whitespace-pre-line text-sm leading-relaxed">{current.body}</p>
 
                                 {current.bullets?.length > 0 && (
                                     <ul className={`mt-4 space-y-2 text-sm ${muted} list-disc pl-5`}>
@@ -270,14 +293,12 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                                                 `${soft} text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]`,
                                             ].join(" ")}
                                         />
-                                        <p className={`mt-2 text-xs ${muted}`}>
-                                            Se lo lasci vuoto, userò un giudizio generico.
-                                        </p>
+                                        <p className={`mt-2 text-xs ${muted}`}>Se lo lasci vuoto, userò un giudizio generico.</p>
                                     </div>
                                 )}
 
                                 <p className={`mt-6 text-center text-xs ${muted}`}>
-                                    Swipe a sinistra/destra per navigare.
+                                    Swipe a sinistra/destra (orizzontale). Se scrolli, HAIP capisce e non rompe.
                                 </p>
 
                                 <div className="h-10" />
@@ -287,7 +308,7 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                 </AnimatePresence>
             </div>
 
-            {/* FOOTER FULL WIDTH */}
+            {/* FOOTER */}
             <div className={`border-t ${surface}`}>
                 <div className="px-4 py-4 flex items-center justify-between gap-2">
                     <Button variant="outline" onClick={prev} disabled={!canPrev} className="rounded-2xl">
