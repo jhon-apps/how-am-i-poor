@@ -1,19 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import {
-    ArrowLeft,
-    ArrowRight,
-    Check,
-    Sparkles,
-    Wallet,
-    Search,
-    Bell,
-    Lock,
-    Settings as SettingsIcon,
-    ListChecks,
-    PieChart,
-    Target,
-} from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, Sparkles, Wallet, PieChart, Lock, Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const USER_KEY = "howamipoor:user:v1"
@@ -46,126 +33,62 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
         writeUserName(name)
     }, [name])
 
+    // ✅ 5 pagine: meno, più chiare, sarcastiche
     const pages = useMemo(() => {
         return [
             {
-                key: "purpose",
-                title: "A cosa serve HAIP",
-                subtitle: "Spoiler: a smettere di fingere.",
-                icon: Target,
-                body:
-                    "HAIP ti serve per una cosa semplice:\n" +
-                    "sapere dove finiscono i soldi.\n\n" +
-                    "Non ti faccio la morale.\n" +
-                    "Ti mostro i numeri.\n" +
-                    "Poi sei tu a soffrire.",
-                bullets: ["Entrate/Uscite chiare", "Storico consultabile", "Notifiche se sparisci"],
-            },
-            {
-                key: "welcome",
-                title: "Benvenuto in HAIP",
-                subtitle: "HOW AM I POOR, ma con dati veri.",
+                key: "why",
+                title: "HAIP: a cosa serve",
+                subtitle: "A sapere dove finiscono i soldi. Triste ma utile.",
                 icon: Sparkles,
                 body:
-                    "App local-first: resta tutto sul tuo dispositivo.\n" +
-                    "Grafici, categorie e un pizzico di giudizio (pulito).",
+                    "Registri entrate/uscite.\n" +
+                    "HAIP ti mostra la verità.\n" +
+                    "Tu fai finta di niente (finché puoi).",
+                bullets: ["Local-first (tutto sul tuo device)", "Panoramica chiara", "Zero scuse"],
             },
             {
                 key: "name",
                 title: "Come ti chiami?",
-                subtitle: "Così posso essere personale 😈",
+                subtitle: "Così posso giudicarti con rispetto 😈",
                 icon: Wallet,
                 body:
                     "Userò il tuo nome in messaggi e notifiche.\n" +
-                    "Puoi lasciarlo vuoto, ma perderai parte del divertimento.",
+                    "Puoi lasciarlo vuoto, ma poi non piangere.",
                 input: true,
             },
             {
-                key: "add",
-                title: "Aggiungi movimenti velocemente",
-                subtitle: "Entrate / Uscite + pulsante +",
+                key: "how",
+                title: "Come si usa",
+                subtitle: "Due tap e via.",
                 icon: Wallet,
                 body:
-                    "Registra un movimento in pochi secondi.\n" +
-                    "L’app prova anche a suggerire la categoria automaticamente.",
-                bullets: ["Entrata / Uscita", "Categoria suggerita", "Modifica e eliminazione"],
+                    "Aggiungi movimenti da Entrate/Uscite o col +.\n" +
+                    "In Home vedi gli ultimi 5: niente lista infinita.",
+                bullets: ["Aggiungi / modifica", "Undo eliminazione", "Home = pulita"],
             },
             {
-                key: "home",
-                title: "Home = panoramica pulita",
-                subtitle: "Non una lista infinita",
-                icon: ListChecks,
-                body:
-                    "In Home vedi sempre e solo gli ultimi 5 movimenti.\n" +
-                    "Per l’elenco completo usi “Vedi tutti”.",
-                bullets: ["Saldo, entrate/uscite", "Stato mese corrente", "Ultimi 5 movimenti"],
-            },
-            {
-                key: "charts",
-                title: "Grafici e categorie",
-                subtitle: "Capisci dove vanno i soldi",
+                key: "insights",
+                title: "Grafici & categorie",
+                subtitle: "Capisci dove bruci tutto.",
                 icon: PieChart,
                 body:
-                    "Grafico e breakdown categorie (di default sugli ultimi 30 giorni).\n" +
-                    "Così hai una vista chiara senza troppo rumore.",
-                bullets: ["Grafico spese", "Breakdown categorie", "Range 30 giorni (FREE)"],
-            },
-            {
-                key: "all",
-                title: "Elenco completo + filtro giorno",
-                subtitle: "Trovi tutto senza distruggere la Home",
-                icon: Search,
-                body:
-                    "“Vedi tutti” apre l’elenco completo.\n" +
-                    "Puoi filtrare per giorno (calendario).",
-                bullets: ["Lista completa", "Filtro per giorno", "Fluido anche con tanti record"],
-            },
-            {
-                key: "freeLimit",
-                title: "Storico oltre 30 giorni",
-                subtitle: "FREE = blur, Premium = sblocco",
-                icon: Lock,
-                body:
-                    "Se non sei Premium, i movimenti oltre 30 giorni vengono sfocati.\n" +
-                    "È il modo di HAIP per dirti: “decidi se ti interessa davvero”.",
-                bullets: ["≤ 30 giorni: visibili", "> 30 giorni: blur + blocco", "Iscriviti per sbloccare"],
+                    "Grafico e categorie ti dicono dove vanno i soldi.\n" +
+                    "FREE: ultimi 30 giorni.\n" +
+                    "Se vuoi “Tutto”… ci arriviamo.",
+                bullets: ["Grafico spese", "Breakdown categorie", "30 giorni in FREE"],
             },
             {
                 key: "premium",
-                title: "Cosa sblocca Premium",
-                subtitle: "Memoria + ricerca + zero ads",
+                title: "Premium",
+                subtitle: "Memoria, ricerca, zero ads.",
                 icon: Lock,
                 body:
-                    "Premium sblocca davvero ciò che serve:\n" +
-                    "- storico completo (niente blur)\n" +
-                    "- ricerca completa\n" +
-                    "- niente pubblicità\n\n" +
-                    "Premium si attiverà tramite Google Play Billing quando sarà pronto.",
-                bullets: ["Storico completo", "Ricerca completa", "No ads"],
-            },
-            {
-                key: "notifications",
-                title: "Notifiche utili",
-                subtitle: "Reminder + inattività",
-                icon: Bell,
-                body:
-                    "Puoi attivare un promemoria giornaliero.\n" +
-                    "E una notifica se non usi l’app per 5 giorni.\n\n" +
-                    "Se un telefono blocca le notifiche, trovi le istruzioni in Impostazioni.",
-                bullets: ["Reminder giornaliero", "Inattività 5 giorni", "Guida permessi/batteria in Settings"],
-            },
-            {
-                key: "settings",
-                title: "Impostazioni & tema",
-                subtitle: "Tutto al suo posto",
-                icon: SettingsIcon,
-                body:
-                    "In Impostazioni trovi:\n" +
-                    "- nome\n" +
-                    "- notifiche\n" +
-                    "- reset\n" +
-                    "- privacy\n\n" +
-                    "E in Home puoi cambiare tema con un tap.",
+                    "FREE: oltre 30 giorni = blur.\n" +
+                    "Premium: storico completo + ricerca vera + niente pubblicità.\n" +
+                    "E sì, ti mando pure promemoria se sparisci.",
+                bullets: ["Storico completo", "Ricerca completa", "Notifiche utili"],
+                footerNote: true,
             },
         ]
     }, [])
@@ -185,7 +108,7 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
         onFinish?.()
     }
 
-    // ✅ Swipe gesture robusto (funziona anche con scroll verticale interno)
+    // ✅ Swipe robusto (funziona anche con scroll)
     const startRef = useRef({ x: 0, y: 0, t: 0 })
     const onTouchStart = (e) => {
         const touch = e.touches?.[0]
@@ -200,16 +123,11 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
         const dy = touch.clientY - startRef.current.y
         const dt = Date.now() - startRef.current.t
 
-        // gesture troppo lenta -> probabilmente scroll/lettura
         if (dt > 700) return
-
         const absX = Math.abs(dx)
         const absY = Math.abs(dy)
-
-        // se è più verticale, ignoriamo (scroll)
         if (absY > absX) return
 
-        // soglia swipe
         const threshold = 70
         if (dx < -threshold && canNext) next()
         if (dx > threshold && canPrev) prev()
@@ -231,11 +149,7 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                         {step + 1}/{total}
                     </p>
 
-                    <button
-                        onClick={finish}
-                        className={`text-xs underline ${muted} hover:opacity-80`}
-                        title="Salta"
-                    >
+                    <button onClick={finish} className={`text-xs underline ${muted} hover:opacity-80`} title="Salta">
                         Salta
                     </button>
                 </div>
@@ -297,8 +211,20 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                                     </div>
                                 )}
 
+                                {current.footerNote && (
+                                    <div className={`mt-6 rounded-2xl border p-3 ${soft}`}>
+                                        <div className="flex items-start gap-2">
+                                            <Bell className="h-4 w-4 mt-0.5" />
+                                            <p className={`text-xs ${muted}`}>
+                                                Tip: se le notifiche non arrivano su Android, in Impostazioni trovi il bottone “Apri impostazioni app”
+                                                e due righe per batteria/permessi.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <p className={`mt-6 text-center text-xs ${muted}`}>
-                                    Swipe a sinistra/destra (orizzontale). Se scrolli, HAIP capisce e non rompe.
+                                    Swipe a sinistra/destra (orizzontale).
                                 </p>
 
                                 <div className="h-10" />

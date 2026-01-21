@@ -15,6 +15,8 @@ import ResetConfirmDialog from "@/components/ui/ResetConfirmDialog"
 import useTransactions from "@/hooks/useTransactions"
 import { applyNotificationSettings, debugTestNotification } from "@/services/notifications"
 import { APP_CONFIG } from "@/config/config"
+import { Repeat } from "lucide-react"
+
 
 const USER_KEY = "howamipoor:user:v1"
 const SETTINGS_KEY = "howamipoor:settings:v1"
@@ -349,6 +351,24 @@ export default function Settings({ onBack }) {
                                 </Button>
                             </div>
                         )}
+                    </div>
+                </section>
+                {/* Ricorrenti */}
+                <section className={`${surface} p-4`}>
+                    <div className="flex items-center gap-2">
+                        <div className={`h-10 w-10 rounded-2xl border ${soft} flex items-center justify-center`}>
+                            <Repeat className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="font-semibold">Ricorrenti</p>
+                            <p className={`text-xs ${mutedClass}`}>Abbonamenti, entrate fisse, e promemoria.</p>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-2">
+                        <Button onClick={() => (window.location.hash = "#/recurring")}>
+                            Gestisci ricorrenti
+                        </Button>
                     </div>
                 </section>
 

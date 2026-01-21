@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
-import { Plus, Lock, Moon, Sun, Settings as SettingsIcon } from "lucide-react"
+import { Plus, Lock, Moon, Sun, Settings as SettingsIcon, Repeat } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 import BalanceCard from "@/components/dashboard/BalanceCard"
@@ -23,6 +23,30 @@ import useAdsConsent from "@/hooks/useAdsConsent"
 import useDebouncedValue from "@/hooks/useDebouncedValue"
 import useTheme from "@/hooks/useTheme"
 
+const PENDING_KEY = "howamipoor:pendingAction:v1"
+const PENDING_EVENT = "haip:pendingAction"
+const RECURRING_KEY = "howamipoor:recurring:v1"
+
+function safeParse(raw, fallback) {
+    try {
+        return JSON.parse(raw) ?? fallback
+    } catch {
+        return fallback
+    }
+}
+
+function consumePendingAction() {
+    const p = safeParse(localStorage.getItem(PENDING_KEY) || "null", null)
+    localStorage.removeItem(PENDING_KEY)
+    return p
+}
+
+function findRecurringById(id) {
+    const arr = safeParse(localStorage.getItem(RECURRING_KEY) || "[]", [])
+    if (!Array.isArray(arr)) return null
+    return arr.find((x) => x?.id === id) || null
+}
+
 function formatEUR(n) {
     return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(Number(n) || 0)
 }
@@ -43,6 +67,9 @@ export default function Home({ onOpenSettings }) {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingTx, setEditingTx] = useState(null)
     const [createType, setCreateType] = useState("uscita")
+
+    // prefill (da notifica ricorrente)
+    const [prefill, setPrefill] = useState(null)
 
     // all transactions dialog
     const [allOpen, setAllOpen] = useState(false)
@@ -186,13 +213,43 @@ export default function Home({ onOpenSettings }) {
     const openNewTransaction = (type) => {
         setEditingTx(null)
         setCreateType(type || "uscita")
+        setPrefill(null)
         setIsModalOpen(true)
     }
 
     const openEditTransaction = (tx) => {
         setEditingTx(tx)
+        setPrefill(null)
         setIsModalOpen(true)
     }
+
+    // ✅ Pending action da notifica ricorrente → modale precompilata
+    useEffect(() => {
+        const run = () => {
+            const p = consumePendingAction()
+            if (!p || p.kind !== "recurring" || !p.recurringId) return
+
+            const rec = findRecurringById(p.recurringId)
+            if (!rec) return
+
+            const today = new Date().toISOString().slice(0, 10)
+
+            setEditingTx(null)
+            setCreateType(rec.type || "uscita")
+            setPrefill({
+                type: rec.type || "uscita",
+                description: rec.description || "",
+                amount: rec.amount ?? "",
+                category: rec.category || "altro",
+                date: today,
+            })
+            setIsModalOpen(true)
+        }
+
+        run()
+        window.addEventListener(PENDING_EVENT, run)
+        return () => window.removeEventListener(PENDING_EVENT, run)
+    }, [])
 
     /**
      * HEADER: hide on scroll
@@ -202,23 +259,18 @@ export default function Home({ onOpenSettings }) {
 
     useEffect(() => {
         let ticking = false
-
         const onScroll = () => {
             if (ticking) return
             ticking = true
-
             window.requestAnimationFrame(() => {
                 const currentY = window.scrollY || 0
-
                 if (currentY < 8) setShowHeader(true)
                 else if (currentY > lastScrollY.current && currentY > 64) setShowHeader(false)
                 else if (currentY < lastScrollY.current) setShowHeader(true)
-
                 lastScrollY.current = currentY
                 ticking = false
             })
         }
-
         window.addEventListener("scroll", onScroll, { passive: true })
         return () => window.removeEventListener("scroll", onScroll)
     }, [])
@@ -239,7 +291,6 @@ export default function Home({ onOpenSettings }) {
                 ].join(" ")}
             >
                 <div className="pt-[env(safe-area-inset-top)]" />
-
                 <div className="mx-auto max-w-6xl px-3 py-2 md:px-4 md:py-3">
                     <div className="flex items-center justify-between gap-2">
                         {/* LEFT */}
@@ -257,6 +308,7 @@ export default function Home({ onOpenSettings }) {
 
                         {/* RIGHT */}
                         <div className="flex items-center gap-2 shrink-0">
+                            {/* Premium: glow più spesso (solo scritta) */}
                             <Button
                                 variant="outline"
                                 className="h-9 rounded-xl px-3 md:h-10 md:px-4"
@@ -275,7 +327,7 @@ export default function Home({ onOpenSettings }) {
                                     transition={{
                                         duration: 1.2,
                                         repeat: Infinity,
-                                        repeatDelay: 2.2,   // 🔥 più spesso
+                                        repeatDelay: 2.2,
                                         ease: "easeInOut",
                                     }}
                                     className="text-amber-300 font-extrabold tracking-wide"
@@ -431,26 +483,39 @@ export default function Home({ onOpenSettings }) {
                                     </button>
                                 </div>
 
-                                <div className="relative w-full min-w-0">
-                                    <input
-                                        value={isPremium ? query : ""}
-                                        onChange={(e) => setQuery(e.target.value)}
-                                        readOnly={!isPremium}
-                                        onClick={() => {
-                                            if (!isPremium) openPremium("search")
-                                        }}
-                                        placeholder={isPremium ? "Cerca (ultimi 5)..." : "Cerca movimenti (Premium)"}
-                                        className={[
-                                            "w-full max-w-full min-w-0 rounded-2xl border px-3 py-2 text-sm outline-none shadow-sm",
-                                            "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
-                                            !isPremium ? "cursor-pointer pr-10" : "",
-                                        ].join(" ")}
-                                    />
-                                    {!isPremium && (
-                                        <div className={`absolute right-3 top-1/2 -translate-y-1/2 ${muted} pointer-events-none`}>
-                                            <Lock className="h-4 w-4" />
-                                        </div>
-                                    )}
+                                {/* ✅ Search + Ricorrenti affianco (chiaro) */}
+                                <div className="flex items-center gap-2 w-full min-w-0">
+                                    <div className="relative flex-1 min-w-0">
+                                        <input
+                                            value={isPremium ? query : ""}
+                                            onChange={(e) => setQuery(e.target.value)}
+                                            readOnly={!isPremium}
+                                            onClick={() => {
+                                                if (!isPremium) openPremium("search")
+                                            }}
+                                            placeholder={isPremium ? "Cerca (ultimi 5)..." : "Cerca movimenti (Premium)"}
+                                            className={[
+                                                "w-full max-w-full min-w-0 rounded-2xl border px-3 py-2 text-sm outline-none shadow-sm",
+                                                "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
+                                                !isPremium ? "cursor-pointer pr-10" : "",
+                                            ].join(" ")}
+                                        />
+                                        {!isPremium && (
+                                            <div className={`absolute right-3 top-1/2 -translate-y-1/2 ${muted} pointer-events-none`}>
+                                                <Lock className="h-4 w-4" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <Button
+                                        variant="outline"
+                                        className="h-10 rounded-2xl px-3 shrink-0"
+                                        onClick={() => (window.location.hash = "#/recurring")}
+                                        title="Ricorrenti"
+                                    >
+                                        <Repeat className="h-4 w-4 mr-2" />
+                                        Ricorrenti
+                                    </Button>
                                 </div>
 
                                 <div className="w-full min-w-0 overflow-hidden">
@@ -530,10 +595,12 @@ export default function Home({ onOpenSettings }) {
                 isOpen={isModalOpen}
                 transaction={editingTx?.id ? editingTx : null}
                 defaultType={createType}
+                prefill={prefill}
                 recentCategories={recentCategories}
                 onClose={() => {
                     setIsModalOpen(false)
                     setEditingTx(null)
+                    setPrefill(null)
                 }}
                 onSubmit={(data) => {
                     if (editingTx?.id) update(data)
@@ -541,6 +608,7 @@ export default function Home({ onOpenSettings }) {
 
                     setIsModalOpen(false)
                     setEditingTx(null)
+                    setPrefill(null)
                 }}
                 isLoading={false}
             />

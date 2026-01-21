@@ -1,4 +1,5 @@
 import { APP_CONFIG } from "@/config/config"
+import { scheduleRecurringNotifications } from "@/services/recurringNotifications"
 
 const SETTINGS_KEY = "howamipoor:settings:v1"
 const USER_KEY = "howamipoor:user:v1"
@@ -91,15 +92,12 @@ async function ensurePermission() {
 async function ensureChannel() {
     try {
         const { LocalNotifications } = await import("@capacitor/local-notifications")
-
-        // Android: createChannel è idempotente, ma alcuni device non aggiornano se già esiste.
-        // Se cambi importance, disinstalla l'app e reinstallala per vedere l'effetto.
         await LocalNotifications.createChannel({
             id: CHANNEL_ID,
             name: CHANNEL_NAME,
-            description: "Promemoria giornaliero e inattività",
-            importance: 5, // HIGH (heads-up)
-            visibility: 1, // PUBLIC
+            description: "Promemoria giornaliero, inattività e ricorrenti",
+            importance: 5,
+            visibility: 1,
             vibration: true,
             lights: true,
         })
@@ -124,7 +122,7 @@ async function scheduleDaily(timeStr, name) {
     const body = `${formatName(name)}hai segnato le spese oggi o stai fingendo?`
     const largeBody =
         `${formatName(name)}ti ricordo che il saldo non si aggiorna da solo.\n` +
-        `Apri HAIP e aggiungi i movimenti di oggi (10 secondi, giuro).`
+        `Apri HAIP e aggiungi i movimenti di oggi (10 secondi).`
 
     const { LocalNotifications } = await import("@capacitor/local-notifications")
 
@@ -137,11 +135,8 @@ async function scheduleDaily(timeStr, name) {
                 largeBody,
                 schedule: { at: next, repeats: true, every: "day" },
                 channelId: CHANNEL_ID,
-
-                // ✅ icona + colore (Android)
                 smallIcon: "ic_notification",
                 iconColor: "#0EA5E9",
-
                 extra: { kind: "daily" },
             },
         ],
@@ -158,7 +153,7 @@ async function scheduleInactivity5Days(name) {
     const body = `${formatName(name)}non ti vedo da un po’. Tutto bene? 😈`
     const largeBody =
         `${formatName(name)}sono passati 5 giorni.\n` +
-        `Se stai evitando il saldo, non giudico... ok sì, giudico.\nApri HAIP.`
+        `Apri HAIP e aggiorna i movimenti.`
 
     const { LocalNotifications } = await import("@capacitor/local-notifications")
 
@@ -190,6 +185,8 @@ export async function applyNotificationSettings() {
 
     if (!s.notificationsEnabled) {
         await cancelByIds([ID_DAILY, ID_INACTIVITY])
+        // ricorrenti: cancello nel servizio ricorrenti stesso (quando chiamato)
+        await scheduleRecurringNotifications()
         return { ok: true, mode: "disabled" }
     }
 
@@ -201,11 +198,13 @@ export async function applyNotificationSettings() {
 
     await ensureChannel()
 
-    // evita duplicati: cancel + reschedule
+    // cancel + reschedule per evitare drift/duplicati
     await cancelByIds([ID_DAILY, ID_INACTIVITY])
 
     if (s.dailyReminderEnabled) await scheduleDaily(s.dailyReminderTime, name)
     if (s.inactivityEnabled) await scheduleInactivity5Days(name)
+
+    await scheduleRecurringNotifications()
 
     return { ok: true, mode: "scheduled" }
 }
@@ -234,8 +233,8 @@ export async function debugTestNotification() {
             {
                 id: 9999,
                 title: "HAIP (test)",
-                body: `${formatName(name)}questa è una notifica test. Ti sto guardando.`,
-                largeBody: `${formatName(name)}notifica test.\nSe la vedi bene, siamo pronti.`,
+                body: `${formatName(name)}questa è una notifica test.`,
+                largeBody: `${formatName(name)}notifica test.\nSe la vedi, siamo ok.`,
                 schedule: { at },
                 channelId: CHANNEL_ID,
                 smallIcon: "ic_notification",

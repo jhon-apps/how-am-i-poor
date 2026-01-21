@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Plus, Minus, Wand2 } from "lucide-react"
+import { Plus, Minus } from "lucide-react"
 import {
     getCategoriesByType,
     getDefaultCategoryByType,
@@ -12,22 +12,21 @@ import { suggestCategory } from "@/entities/autoCategory"
 
 const today = () => new Date().toISOString().split("T")[0]
 
-// ✅ FIX: usa defaultType quando transaction è null
-function buildInitialState(transaction, defaultType) {
-    const type = transaction?.type ?? defaultType ?? "uscita"
+function buildInitialState({ transaction, prefill, defaultType }) {
+    const baseType = transaction?.type ?? prefill?.type ?? defaultType ?? "uscita"
 
-    const categoryFromTx = transaction?.category
+    const categoryFromTx = transaction?.category ?? prefill?.category
     const category =
-        categoryFromTx && isCategoryAllowedForType(categoryFromTx, type)
+        categoryFromTx && isCategoryAllowedForType(categoryFromTx, baseType)
             ? categoryFromTx
-            : getDefaultCategoryByType(type)
+            : getDefaultCategoryByType(baseType)
 
     return {
-        type,
+        type: baseType,
         formData: {
-            description: transaction?.description ?? "",
-            amount: transaction?.amount ?? "",
-            date: (transaction?.date ?? today()).slice(0, 10),
+            description: transaction?.description ?? prefill?.description ?? "",
+            amount: transaction?.amount ?? prefill?.amount ?? "",
+            date: (transaction?.date ?? prefill?.date ?? today()).slice(0, 10),
             category,
         },
         error: "",
@@ -39,18 +38,15 @@ function parseAmount(raw) {
     let s = String(raw).trim()
     s = s.replace(/\s/g, "")
     s = s.replace(/[€$£]/g, "")
-
     if (s.includes(".") && s.includes(",")) {
         s = s.replace(/\./g, "")
         s = s.replace(",", ".")
         return Number(s)
     }
-
     if (s.includes(",") && !s.includes(".")) {
         s = s.replace(",", ".")
         return Number(s)
     }
-
     return Number(s)
 }
 
@@ -61,14 +57,19 @@ export default function AddTransactionModal({
                                                 transaction,
                                                 isLoading,
                                                 recentCategories = [],
-                                                // ✅ nuova prop usata da Home
                                                 defaultType = "uscita",
+                                                prefill = null, // ✅ NEW
                                             }) {
-    const initial = useMemo(() => buildInitialState(transaction, defaultType), [transaction, defaultType])
+    const initial = useMemo(
+        () => buildInitialState({ transaction, prefill, defaultType }),
+        [transaction, prefill, defaultType]
+    )
+
     const [type, setType] = useState(initial.type)
     const [formData, setFormData] = useState(initial.formData)
     const [error, setError] = useState(initial.error)
 
+    // autocategory
     const [manualCategory, setManualCategory] = useState(false)
     const [suggested, setSuggested] = useState(null)
 
@@ -90,17 +91,15 @@ export default function AddTransactionModal({
         return uniq
     }, [recentCategories, type])
 
-    // ✅ Reset stato quando si apre / cambia transaction / cambia defaultType
+    // Reset stato quando cambia edit/new/prefill
     useEffect(() => {
-        if (!isOpen) return
-        const next = buildInitialState(transaction, defaultType)
+        const next = buildInitialState({ transaction, prefill, defaultType })
         setType(next.type)
         setFormData(next.formData)
         setError("")
         setManualCategory(false)
         setSuggested(null)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [transaction, defaultType, isOpen])
+    }, [transaction, prefill, defaultType, isOpen])
 
     const setTypeSafe = (nextType) => {
         setError("")
@@ -112,18 +111,13 @@ export default function AddTransactionModal({
         })
     }
 
-    // ✅ ricalcola suggerimento quando descrizione o tipo cambiano
     useEffect(() => {
         const s = suggestCategory(formData.description, type)
         const valid = s && isCategoryAllowedForType(s, type) ? s : null
         setSuggested(valid)
 
-        // se auto ON, applica suggerimento
         if (!manualCategory && valid) {
-            setFormData((p) => {
-                if (p.category === valid) return p
-                return { ...p, category: valid }
-            })
+            setFormData((p) => (p.category === valid ? p : { ...p, category: valid }))
         }
     }, [formData.description, type, manualCategory])
 
@@ -135,22 +129,10 @@ export default function AddTransactionModal({
         const parsed = parseAmount(formData.amount)
         const amount = Math.abs(parsed)
 
-        if (desc.length < 2) {
-            setError("Descrizione troppo corta.")
-            return
-        }
-        if (!Number.isFinite(amount) || amount <= 0) {
-            setError("Inserisci un importo valido (> 0). Esempio: 10,50")
-            return
-        }
-        if (!formData.date) {
-            setError("Seleziona una data valida.")
-            return
-        }
-        if (!isCategoryAllowedForType(formData.category, type)) {
-            setError("Categoria non valida per questo tipo.")
-            return
-        }
+        if (desc.length < 2) return setError("Descrizione troppo corta.")
+        if (!Number.isFinite(amount) || amount <= 0) return setError("Inserisci un importo valido (> 0).")
+        if (!formData.date) return setError("Seleziona una data valida.")
+        if (!isCategoryAllowedForType(formData.category, type)) return setError("Categoria non valida per questo tipo.")
 
         onSubmit({
             ...(transaction ?? {}),
@@ -170,7 +152,6 @@ export default function AddTransactionModal({
         "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))]"
 
     const pillBase = "px-3 py-1.5 rounded-full text-xs border transition"
-
     const muted = "text-[rgb(var(--muted-fg))]"
     const card = "bg-[rgb(var(--card))] border-[rgb(var(--border))]"
     const soft = "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
@@ -179,12 +160,10 @@ export default function AddTransactionModal({
         <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
             <DialogContent>
                 <DialogHeader>
-                    {/* ✅ FIX: "Modifica" solo se esiste id */}
                     <DialogTitle>{transaction?.id ? "Modifica movimento" : "Nuovo movimento"}</DialogTitle>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* toggle type */}
                     <div className={`flex gap-2 p-1 rounded-2xl border ${soft}`}>
                         <button
                             type="button"
@@ -213,7 +192,6 @@ export default function AddTransactionModal({
                         </button>
                     </div>
 
-                    {/* quick pills (stesso comportamento di prima) */}
                     <div className="flex flex-wrap gap-2">
                         {pills.map((k) => {
                             const selected = formData.category === k
@@ -237,69 +215,38 @@ export default function AddTransactionModal({
                         })}
                     </div>
 
-                    {/* description + suggestion */}
-                    <div className="space-y-2">
+                    <input
+                        className={inputBase}
+                        value={formData.description}
+                        onChange={(e) => {
+                            setError("")
+                            setFormData((p) => ({ ...p, description: e.target.value }))
+                        }}
+                        placeholder="Descrizione"
+                        autoFocus
+                    />
+
+                    <div className="grid grid-cols-2 gap-2">
                         <input
                             className={inputBase}
-                            placeholder="Descrizione"
-                            value={formData.description}
+                            value={formData.amount}
                             onChange={(e) => {
                                 setError("")
-                                setFormData((p) => ({ ...p, description: e.target.value }))
+                                setFormData((p) => ({ ...p, amount: e.target.value }))
                             }}
-                            required
+                            placeholder="Importo"
+                            inputMode="decimal"
                         />
-
-                        <div className={`flex items-center justify-between text-xs ${muted}`}>
-                            <div className="flex items-center gap-2 min-w-0">
-                                <Wand2 className="h-4 w-4 shrink-0" />
-                                <span className="truncate">
-                  {suggested
-                      ? `Suggerita: ${getCategoryLabel(suggested)}${manualCategory ? " (manuale attivo)" : ""}`
-                      : manualCategory
-                          ? "Categoria manuale attiva"
-                          : "Nessun suggerimento (scrivi qualcosa tipo: benzina, ristorante, affitto…)"}
-                </span>
-                            </div>
-
-                            {manualCategory && suggested && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setManualCategory(false)
-                                        setFormData((p) => ({ ...p, category: suggested }))
-                                    }}
-                                    className="underline hover:opacity-80 shrink-0"
-                                    title="Applica categoria suggerita"
-                                >
-                                    Applica
-                                </button>
-                            )}
-                        </div>
+                        <input
+                            className={inputBase}
+                            type="date"
+                            value={formData.date}
+                            onChange={(e) => {
+                                setError("")
+                                setFormData((p) => ({ ...p, date: e.target.value }))
+                            }}
+                        />
                     </div>
-
-                    <input
-                        type="text"
-                        inputMode="decimal"
-                        className={inputBase}
-                        placeholder="Importo (es. 10,50)"
-                        value={formData.amount}
-                        onChange={(e) => {
-                            setError("")
-                            setFormData((p) => ({ ...p, amount: e.target.value }))
-                        }}
-                        required
-                    />
-
-                    <input
-                        type="date"
-                        className={inputBase}
-                        value={formData.date}
-                        onChange={(e) => {
-                            setError("")
-                            setFormData((p) => ({ ...p, date: e.target.value }))
-                        }}
-                    />
 
                     <select
                         className={selectBase}
@@ -311,21 +258,26 @@ export default function AddTransactionModal({
                         }}
                     >
                         {categoriesForType.map((c) => (
-                            <option key={c.key} value={c.key}>
-                                {c.label}
+                            <option key={c} value={c}>
+                                {getCategoryLabel(c)}
                             </option>
                         ))}
                     </select>
 
                     {error && (
-                        <div className="rounded-2xl border px-3 py-2 text-sm bg-rose-50 border-rose-200 text-rose-800">
+                        <div className="rounded-xl border px-3 py-2 text-sm bg-rose-50 text-rose-800 border-rose-200">
                             {error}
                         </div>
                     )}
 
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                        {transaction?.id ? "Salva modifiche" : "Aggiungi movimento"}
-                    </Button>
+                    <div className="flex gap-2 pt-1">
+                        <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
+                            Annulla
+                        </Button>
+                        <Button type="submit" className="flex-1" disabled={isLoading}>
+                            {transaction?.id ? "Salva" : "Aggiungi"}
+                        </Button>
+                    </div>
                 </form>
             </DialogContent>
         </Dialog>

@@ -2,7 +2,9 @@ import { useEffect, useState } from "react"
 import Home from "@/pages/Home"
 import Settings from "@/pages/Settings"
 import Onboarding from "@/pages/Onboarding"
+import Recurring from "@/pages/Recurring"
 import useAppLifecycle from "@/hooks/useAppLifecycle"
+import useNotificationActions from "@/hooks/useNotificationActions"
 
 const ONBOARDING_KEY = "howamipoor:onboardingDone:v1"
 
@@ -21,11 +23,13 @@ function getRouteFromHash() {
     const h = window.location.hash || "#/"
     if (h.startsWith("#/settings")) return "settings"
     if (h.startsWith("#/onboarding")) return "onboarding"
+    if (h.startsWith("#/recurring")) return "recurring"
     return "home"
 }
 
 export default function App() {
     useAppLifecycle()
+    useNotificationActions()
 
     const [route, setRoute] = useState(getRouteFromHash())
     const [showFirstRunOnboarding, setShowFirstRunOnboarding] = useState(!onboardingDone())
@@ -36,7 +40,6 @@ export default function App() {
         return () => window.removeEventListener("hashchange", onHashChange)
     }, [])
 
-    // First run onboarding (solo la prima volta)
     if (showFirstRunOnboarding) {
         return (
             <Onboarding
@@ -48,16 +51,20 @@ export default function App() {
         )
     }
 
-    // Manual onboarding route (da Settings)
     if (route === "onboarding") {
         return (
             <Onboarding
+                mode="manual"
                 onFinish={() => {
-                    // torna alle impostazioni
                     window.location.hash = "#/settings"
                 }}
             />
         )
+    }
+
+    // ✅ FIX: ricorrenti torna alla HOME
+    if (route === "recurring") {
+        return <Recurring onBack={() => (window.location.hash = "#/")} />
     }
 
     if (route === "settings") {

@@ -78,7 +78,7 @@ export default function usePremium() {
     }, [refresh])
 
     const billingReady = APP_CONFIG.BILLING_READY
-    const canSimulate = APP_CONFIG.IS_DEV
+    const canSimulate = APP_CONFIG.DEV_TOOLS_ENABLED
 
     const source = state.source
     const isPremium = source !== "none"

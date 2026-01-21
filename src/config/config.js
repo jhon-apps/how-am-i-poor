@@ -5,13 +5,13 @@
  */
 export const APP_CONFIG = {
     BILLING_READY: false,
-
-    ADS_ENABLED: false,
-
+    ADS_ENABLED: true,
     NOTIFICATIONS_ENABLED: true,
 
-    // Env helper
     IS_DEV: import.meta.env.DEV,
 
-    DEV_TOOLS_ENABLED: import.meta.env.DEV,
+    DEV_TOOLS_ENABLED: import.meta.env.VITE_DEVTOOLS === "true" || import.meta.env.DEV,
 }
+
+
+
