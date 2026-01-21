@@ -1,187 +1,134 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 
-const STORAGE_KEY = "howamipoor:transactions:v1"
+const KEY = "howamipoor:transactions:v1"
 
-function toYmd(dateLike) {
-    if (!dateLike) return ""
-    return String(dateLike).slice(0, 10)
-}
-
-function safeNumber(n) {
-    const x = Number(n)
-    return Number.isFinite(x) ? x : 0
-}
-
-/**
- * Ordine definitivo:
- * 1) date DESC (giorno)
- * 2) createdAt DESC (ultimo inserito sopra nello stesso giorno)
- * 3) id DESC (fallback stabile)
- */
-function compareTxDesc(a, b) {
-    const da = toYmd(a.date)
-    const db = toYmd(b.date)
-
-    if (da < db) return 1
-    if (da > db) return -1
-
-    const ca = safeNumber(a.createdAt)
-    const cb = safeNumber(b.createdAt)
-    if (ca < cb) return 1
-    if (ca > cb) return -1
-
-    const ia = String(a.id ?? "")
-    const ib = String(b.id ?? "")
-    if (ia < ib) return 1
-    if (ia > ib) return -1
-    return 0
-}
-
-function normalizeTx(tx, fallbackCreatedAt) {
-    const date = toYmd(tx?.date) || toYmd(new Date().toISOString())
-    const type = tx?.type === "entrata" ? "entrata" : "uscita"
-
-    return {
-        id: tx?.id,
-        type,
-        description: String(tx?.description ?? "").trim(),
-        amount: safeNumber(tx?.amount),
-        category: String(tx?.category ?? "").trim(),
-        date,
-        createdAt: Number.isFinite(Number(tx?.createdAt)) ? Number(tx.createdAt) : fallbackCreatedAt,
-    }
-}
-
-function loadFromStorage() {
+function safeParse(raw, fallback) {
     try {
-        const raw = localStorage.getItem(STORAGE_KEY)
-        const parsed = raw ? JSON.parse(raw) : []
-        return Array.isArray(parsed) ? parsed : []
+        const v = JSON.parse(raw)
+        return v ?? fallback
     } catch {
-        return []
+        return fallback
     }
 }
 
-function saveToStorage(list) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
+function normalizeTx(tx) {
+    const id = String(tx?.id || "")
+    const type = tx?.type === "entrata" ? "entrata" : "uscita"
+    const amount = Number(tx?.amount) || 0
+    const date = String(tx?.date || "").slice(0, 10) || new Date().toISOString().slice(0, 10)
+    const category = String(tx?.category || "altro")
+    const description = String(tx?.description || "")
+    const createdAt = Number(tx?.createdAt || 0) || Date.now()
+
+    return { id, type, amount, date, category, description, createdAt }
 }
 
-function migrateAndSort(rawList) {
-    // Manteniamo l’ordine attuale assegnando createdAt decrescente in base all’indice.
-    // Se il tuo array è già date DESC (come da test), questa migrazione preserva la coerenza.
-    const base = Date.now()
-    const migrated = rawList.map((t, i) => normalizeTx(t, base - i))
-    migrated.sort(compareTxDesc)
-    return migrated
+function sortTx(a, b) {
+    // date desc
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1
+    // createdAt desc
+    if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1
+    // id desc (stable fallback)
+    return a.id < b.id ? 1 : -1
+}
+
+function readAll() {
+    const raw = localStorage.getItem(KEY)
+    const arr = safeParse(raw || "[]", [])
+    if (!Array.isArray(arr)) return []
+    return arr.map(normalizeTx).sort(sortTx)
+}
+
+function writeAll(list) {
+    localStorage.setItem(KEY, JSON.stringify(list))
+    // same-tab sync helper (storage event non scatta nello stesso tab)
+    window.dispatchEvent(new Event("haip:transactions:changed"))
 }
 
 export default function useTransactions() {
-    const [transactions, setTransactions] = useState([])
-    const [isLoading, setIsLoading] = useState(true)
+    const [transactions, setTransactions] = useState(() => readAll())
+    const [isLoading, setIsLoading] = useState(false)
 
+    // sync same-tab + cross-tab
     useEffect(() => {
-        const raw = loadFromStorage()
-        const needsPersist = raw.some((t) => t?.createdAt == null)
+        const refresh = () => setTransactions(readAll())
 
-        const next = migrateAndSort(raw)
+        const onStorage = (e) => {
+            if (e.key === KEY) refresh()
+        }
+        const onLocal = () => refresh()
 
-        if (needsPersist) saveToStorage(next)
-
-        setTransactions(next)
-        setIsLoading(false)
+        window.addEventListener("storage", onStorage)
+        window.addEventListener("haip:transactions:changed", onLocal)
+        return () => {
+            window.removeEventListener("storage", onStorage)
+            window.removeEventListener("haip:transactions:changed", onLocal)
+        }
     }, [])
 
-    const persist = useCallback((nextList) => {
-        const sorted = [...nextList].sort(compareTxDesc)
+    const persist = useCallback((next) => {
+        const sorted = [...next].map(normalizeTx).sort(sortTx)
         setTransactions(sorted)
-        saveToStorage(sorted)
+        writeAll(sorted)
     }, [])
 
     const add = useCallback(
         (tx) => {
-            const now = Date.now()
-            const next = normalizeTx(
-                {
-                    ...tx,
-                    createdAt: now,
-                },
-                now
-            )
-
-            // inseriamo e poi sortiamo per garantire ordine stabile
-            persist([next, ...transactions])
+            const n = normalizeTx(tx)
+            if (!n.id) {
+                // fallback id robusto
+                n.id = `tx_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+            }
+            persist([n, ...transactions])
         },
         [persist, transactions]
     )
 
     const update = useCallback(
         (tx) => {
-            if (!tx?.id) return
-            const existing = transactions.find((t) => t.id === tx.id)
-            if (!existing) return
-
-            const updated = normalizeTx(
-                {
-                    ...existing,
-                    ...tx,
-                    createdAt: existing.createdAt, // ✅ non cambiare createdAt in update
-                },
-                existing.createdAt
-            )
-
-            const replaced = transactions.map((t) => (t.id === tx.id ? updated : t))
-            persist(replaced)
+            const n = normalizeTx(tx)
+            if (!n.id) return
+            const next = transactions.map((t) => (t.id === n.id ? { ...t, ...n } : t))
+            persist(next)
         },
         [persist, transactions]
     )
 
     const remove = useCallback(
         (id) => {
-            if (!id) return
-            persist(transactions.filter((t) => t.id !== id))
+            const sid = String(id || "")
+            if (!sid) return
+            const next = transactions.filter((t) => t.id !== sid)
+            persist(next)
         },
         [persist, transactions]
     )
 
+    // restore = rimette il record (per undo)
     const restore = useCallback(
         (tx) => {
-            if (!tx?.id) return
-            if (transactions.some((t) => t.id === tx.id)) return
-
-            // restore: se manca createdAt, lo consideriamo "appena ripristinato" => in cima al suo giorno
-            const now = Date.now()
-            const restored = normalizeTx(
-                {
-                    ...tx,
-                    createdAt: Number.isFinite(Number(tx.createdAt)) ? Number(tx.createdAt) : now,
-                },
-                now
-            )
-
-            persist([restored, ...transactions])
+            const n = normalizeTx(tx)
+            if (!n.id) return
+            // evita duplicati
+            const next = transactions.filter((t) => t.id !== n.id)
+            persist([n, ...next])
         },
         [persist, transactions]
     )
 
     const reset = useCallback(() => {
-        setTransactions([])
-        saveToStorage([])
-    }, [])
+        persist([])
+    }, [persist])
 
     const totals = useMemo(() => {
-        const income = transactions
-            .filter((t) => t.type === "entrata")
-            .reduce((s, t) => s + safeNumber(t.amount), 0)
-
-        const expenses = transactions
-            .filter((t) => t.type === "uscita")
-            .reduce((s, t) => s + safeNumber(t.amount), 0)
-
-        return {
-            income,
-            expenses,
-            balance: income - expenses,
+        let income = 0
+        let expenses = 0
+        for (const t of transactions) {
+            const a = Number(t.amount) || 0
+            if (t.type === "entrata") income += a
+            else expenses += a
         }
+        return { income, expenses, balance: income - expenses }
     }, [transactions])
 
     return {

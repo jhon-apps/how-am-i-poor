@@ -1,116 +1,68 @@
-import { Trash2, ArrowDownRight, ArrowUpRight, Lock } from "lucide-react"
-import { isLockedTransaction } from "@/entities/premium"
+import { ArrowDownRight, ArrowUpRight, Trash2, Pencil } from "lucide-react"
 
 function formatEUR(n) {
-    return (Number(n) || 0).toLocaleString("it-IT", { style: "currency", currency: "EUR" })
+    return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(Number(n) || 0)
 }
 
-export default function TransactionItem({ tx, onDelete, onEdit, isPremium, onPremium }) {
-    if (!tx) return null
-
-    const locked = isLockedTransaction(tx, isPremium)
-    const isExpense = tx.type === "uscita"
-
-    const card = "bg-[rgb(var(--card))] border-[rgb(var(--border))]"
-    const sub = "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
-    const muted = "text-[rgb(var(--muted-fg))]"
-
-    const onOpen = () => {
-        if (locked) {
-            onPremium?.("history")
-            return
-        }
-        onEdit?.(tx)
-    }
-
-    const onRemove = (e) => {
-        e.stopPropagation()
-        if (locked) {
-            onPremium?.("history")
-            return
-        }
-        onDelete?.(tx.id)
-    }
+export default function TransactionItem({ tx, onDelete, onEdit }) {
+    const isIncome = tx?.type === "entrata"
+    const Icon = isIncome ? ArrowUpRight : ArrowDownRight
 
     return (
-        <div
-            role="button"
-            tabIndex={0}
-            onClick={onOpen}
-            onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") onOpen()
-            }}
-            className={[
-                "relative flex items-center justify-between gap-4 rounded-2xl border p-4 transition shadow-sm",
-                card,
-                "hover:opacity-[0.98]",
-                locked ? "cursor-pointer" : "cursor-pointer",
-            ].join(" ")}
-        >
-            {/* LEFT */}
-            <div className="flex items-center gap-4 min-w-0">
-                <div
-                    className={[
-                        "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border",
-                        sub,
-                        locked ? "opacity-60" : "",
-                    ].join(" ")}
-                    aria-hidden="true"
-                >
-                    {/* Icon color stays semantic and readable */}
-                    {isExpense ? (
-                        <ArrowDownRight size={18} className="text-rose-700" />
-                    ) : (
-                        <ArrowUpRight size={18} className="text-emerald-700" />
-                    )}
+        <div className="w-full min-w-0 overflow-hidden rounded-3xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] p-4">
+            <div className="flex items-center gap-3 min-w-0">
+                <div className="h-11 w-11 shrink-0 rounded-2xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))] flex items-center justify-center">
+                    <Icon className="h-5 w-5" />
                 </div>
 
-                <div className={["min-w-0", locked ? "opacity-60" : ""].join(" ")}>
-                    <p className="font-bold tracking-tight truncate">{tx.description}</p>
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2 min-w-0">
+                        <div className="min-w-0">
+                            <p className="font-semibold leading-tight truncate">{tx?.description || "—"}</p>
+                            <p className="text-sm text-[rgb(var(--muted-fg))] truncate">
+                                {(tx?.date || "").slice(0, 10)} • {tx?.category || "—"}
+                            </p>
+                        </div>
 
-                    <p className={["text-sm tracking-tight truncate", muted].join(" ")}>
-                        {new Date(tx.date).toLocaleDateString("it-IT")} • {tx.category}
-                    </p>
-                </div>
-            </div>
+                        <div className="shrink-0 text-right">
+                            <p className={`font-semibold ${isIncome ? "text-emerald-700" : "text-rose-700"}`}>
+                                {isIncome ? "+" : "-"}
+                                {formatEUR(tx?.amount)}
+                            </p>
+                        </div>
+                    </div>
 
-            {/* RIGHT */}
-            <div className="flex items-center gap-3 shrink-0">
-        <span className={["font-semibold tabular-nums", locked ? "opacity-60" : ""].join(" ")}>
-          {isExpense ? "-" : "+"}
-            <span className={isExpense ? "text-rose-700" : "text-emerald-700"}>{formatEUR(tx.amount)}</span>
-        </span>
+                    <div className="mt-3 flex items-center justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                onEdit?.(tx)
+                            }}
+                            className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs bg-[rgb(var(--card-2))] border-[rgb(var(--border))] hover:opacity-90"
+                            title="Modifica"
+                        >
+                            <Pencil className="h-4 w-4" />
+                            Modifica
+                        </button>
 
-                <button
-                    type="button"
-                    onClick={onRemove}
-                    className={[
-                        "h-10 w-10 rounded-xl inline-flex items-center justify-center transition",
-                        muted,
-                        "hover:bg-[rgb(var(--muted))] hover:opacity-90",
-                        locked ? "opacity-60" : "",
-                    ].join(" ")}
-                    title={locked ? "Storico Premium" : "Elimina"}
-                    aria-label={locked ? "Storico Premium" : "Elimina movimento"}
-                >
-                    <Trash2 size={16} />
-                </button>
-            </div>
-
-            {/* LOCKED OVERLAY */}
-            {locked && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div
-                        className={[
-                            "rounded-full border px-3 py-1 text-xs flex items-center gap-2 shadow-sm",
-                            "bg-[rgb(var(--card))] border-[rgb(var(--border))]",
-                        ].join(" ")}
-                    >
-                        <Lock className="h-3.5 w-3.5" />
-                        Storico Premium (30+ giorni)
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                onDelete?.(tx?.id)
+                            }}
+                            className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs bg-[rgb(var(--card-2))] border-[rgb(var(--border))] hover:opacity-90"
+                            title="Elimina"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            Elimina
+                        </button>
                     </div>
                 </div>
-            )}
+            </div>
         </div>
     )
 }

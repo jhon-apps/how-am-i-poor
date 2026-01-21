@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
     ArrowLeft,
     Bell,
@@ -79,14 +79,18 @@ export default function Settings({ onBack }) {
         notifPermission: "unknown", // unknown | granted | denied
     })
 
+    const applyTimer = useRef(null)
+
     useEffect(() => {
         writeUserName(name)
     }, [name])
 
+    // ✅ Debounce applyNotificationSettings (evita stutter mentre scrolli/cambi toggle)
     useEffect(() => {
         writeSettings(settings)
 
-        ;(async () => {
+        if (applyTimer.current) clearTimeout(applyTimer.current)
+        applyTimer.current = setTimeout(async () => {
             const res = await applyNotificationSettings()
             if (res.ok) setNotifStatus("Notifiche aggiornate ✅")
             else if (res.reason === "not_native") setNotifStatus("Notifiche: disponibili solo su app Android.")
@@ -94,7 +98,11 @@ export default function Settings({ onBack }) {
             else if (res.reason === "disabled_by_config") setNotifStatus("Notifiche disabilitate a livello di app.")
             else setNotifStatus("")
             setTimeout(() => setNotifStatus(""), 2500)
-        })()
+        }, 350)
+
+        return () => {
+            if (applyTimer.current) clearTimeout(applyTimer.current)
+        }
     }, [settings])
 
     useEffect(() => {
@@ -119,7 +127,7 @@ export default function Settings({ onBack }) {
         })()
     }, [])
 
-    const surface = "rounded-3xl border shadow-sm bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+    const surface = "rounded-3xl border bg-[rgb(var(--card))] border-[rgb(var(--border))]" // ✅ no shadow
     const soft = "rounded-2xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
     const mutedClass = "text-[rgb(var(--muted-fg))]"
 
@@ -134,11 +142,9 @@ export default function Settings({ onBack }) {
 
             const { App } = await import("@capacitor/app")
             await App.openSettings()
-
             setNotifStatus("Aprendo impostazioni app…")
             setTimeout(() => setNotifStatus(""), 1500)
-        } catch (e) {
-            console.warn("App.openSettings() failed:", e)
+        } catch {
             setNotifStatus("Apri manualmente: Impostazioni → App → HAIP → Notifiche/Batteria.")
             setTimeout(() => setNotifStatus(""), 4000)
         }
@@ -157,9 +163,7 @@ export default function Settings({ onBack }) {
                 notifPermission: req.display === "granted" ? "granted" : "denied",
             }))
 
-            const res = await applyNotificationSettings()
-            if (res.ok) setNotifStatus("Permesso OK. Notifiche attive ✅")
-            else setNotifStatus("Permesso non concesso.")
+            setNotifStatus(req.display === "granted" ? "Permesso OK ✅" : "Permesso non concesso.")
             setTimeout(() => setNotifStatus(""), 2500)
         } catch {
             setNotifStatus("Impossibile richiedere permessi.")
@@ -226,7 +230,7 @@ export default function Settings({ onBack }) {
                             onChange={(e) => setName(e.target.value)}
                             placeholder="Es. Jhon"
                             className={[
-                                "mt-2 w-full rounded-2xl border px-3 py-2 text-sm outline-none shadow-sm",
+                                "mt-2 w-full rounded-2xl border px-3 py-2 text-sm outline-none",
                                 "bg-[rgb(var(--card-2))] border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
                             ].join(" ")}
                         />
@@ -248,7 +252,6 @@ export default function Settings({ onBack }) {
 
                     {notifStatus && <p className={`mt-3 text-xs ${mutedClass}`}>{notifStatus}</p>}
 
-                    {/* Help box permessi/batteria */}
                     {nativeInfo.isNative && (
                         <div className={`mt-4 rounded-2xl border p-3 ${soft}`}>
                             <div className="flex items-start gap-2">
@@ -275,13 +278,6 @@ export default function Settings({ onBack }) {
                                             <Button onClick={requestNotifPermission}>Richiedi permesso notifiche</Button>
                                         )}
                                     </div>
-
-                                    <p className={`mt-2 text-[11px] ${mutedClass}`}>
-                                        Stato permesso notifiche:{" "}
-                                        <span className="font-semibold">
-                      {nativeInfo.notifPermission === "granted" ? "concesso" : "non concesso"}
-                    </span>
-                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -308,7 +304,6 @@ export default function Settings({ onBack }) {
                                         <Clock className="h-4 w-4" />
                                         Reminder giornaliero
                                     </p>
-                                    <p className={`text-xs ${mutedClass}`}>Notifica ogni giorno.</p>
                                 </div>
                                 <input
                                     type="checkbox"
@@ -327,7 +322,7 @@ export default function Settings({ onBack }) {
                                     disabled={!settings.notificationsEnabled || !settings.dailyReminderEnabled}
                                     onChange={(e) => setSettings((s) => ({ ...s, dailyReminderTime: e.target.value }))}
                                     className={[
-                                        "rounded-xl border px-3 py-2 text-sm outline-none shadow-sm",
+                                        "rounded-xl border px-3 py-2 text-sm outline-none",
                                         "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))]",
                                     ].join(" ")}
                                 />
@@ -337,7 +332,6 @@ export default function Settings({ onBack }) {
                         <div className={`${soft} p-3 flex items-start justify-between gap-3`}>
                             <div className="min-w-0">
                                 <p className="text-sm font-semibold">Notifica inattività (5 giorni)</p>
-                                <p className={`text-xs ${mutedClass}`}>Se non apri l’app per 5 giorni.</p>
                             </div>
                             <input
                                 type="checkbox"
@@ -348,17 +342,9 @@ export default function Settings({ onBack }) {
                             />
                         </div>
 
-                        {/* ✅ Test notifica SOLO DEV */}
                         {APP_CONFIG.DEV_TOOLS_ENABLED && (
                             <div className="pt-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={async () => {
-                                        const res = await debugTestNotification()
-                                        setNotifStatus(res.ok ? "Notifica test schedulata (5s) ✅" : `Test fallito: ${res.reason}`)
-                                        setTimeout(() => setNotifStatus(""), 2500)
-                                    }}
-                                >
+                                <Button variant="outline" onClick={debugTestNotification}>
                                     Test notifica (5s)
                                 </Button>
                             </div>
@@ -385,7 +371,7 @@ export default function Settings({ onBack }) {
                     </div>
                 </section>
 
-                {/* ✅ Developer section SOLO DEV */}
+                {/* Developer section */}
                 {APP_CONFIG.DEV_TOOLS_ENABLED && (
                     <section className={`${surface} p-4`}>
                         <div className="flex items-center gap-2">
@@ -413,24 +399,8 @@ export default function Settings({ onBack }) {
                                 Torna alla Home
                             </Button>
                         </div>
-
-                        <p className={`mt-3 text-xs ${mutedClass}`}>Lo rimuoviamo prima della build finale.</p>
                     </section>
                 )}
-
-                {/* Privacy */}
-                <section className={`${surface} p-4`}>
-                    <p className="text-sm font-semibold">Privacy</p>
-                    <p className={`mt-1 text-xs ${mutedClass}`}>Link esterno alla policy.</p>
-                    <a
-                        href="https://jhon-apps.github.io/how-am-i-poor/privacy.html"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-3 inline-block underline hover:opacity-80 text-sm"
-                    >
-                        Privacy Policy
-                    </a>
-                </section>
             </main>
 
             <ResetConfirmDialog
