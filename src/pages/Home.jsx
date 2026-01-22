@@ -281,7 +281,7 @@ export default function Home({ onOpenSettings }) {
     const muted = "text-[rgb(var(--muted-fg))]"
 
     return (
-        <div className="min-h-screen overflow-x-hidden bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
+        <div className="min-h-screen bg-[rgb(var(--bg))] text-[rgb(var(--fg))] pb-[env(safe-area-inset-bottom)]">
             {/* Header */}
             <div
                 className={[
@@ -647,7 +647,7 @@ export default function Home({ onOpenSettings }) {
                 animate={{ scale: 1 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => openNewTransaction("uscita")}
-                className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg flex items-center justify-center md:hidden bg-slate-900 text-white"
+                className="fixed right-6 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] h-14 w-14 rounded-full shadow-lg flex items-center justify-center md:hidden bg-slate-900 text-white"
                 aria-label="Nuovo movimento"
                 title="Nuovo movimento"
             >

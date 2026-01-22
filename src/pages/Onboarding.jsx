@@ -33,7 +33,6 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
         writeUserName(name)
     }, [name])
 
-    // ✅ 5 pagine: meno, più chiare, sarcastiche
     const pages = useMemo(() => {
         return [
             {
@@ -45,7 +44,7 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                     "Registri entrate/uscite.\n" +
                     "HAIP ti mostra la verità.\n" +
                     "Tu fai finta di niente (finché puoi).",
-                bullets: ["Local-first (tutto sul tuo device)", "Panoramica chiara", "Zero scuse"],
+                bullets: ["Local-first (tutto sul device)", "Panoramica chiara", "Zero scuse"],
             },
             {
                 key: "name",
@@ -86,7 +85,7 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                 body:
                     "FREE: oltre 30 giorni = blur.\n" +
                     "Premium: storico completo + ricerca vera + niente pubblicità.\n" +
-                    "E sì, ti mando pure promemoria se sparisci.",
+                    "E sì, ti mando promemoria se sparisci.",
                 bullets: ["Storico completo", "Ricerca completa", "Notifiche utili"],
                 footerNote: true,
             },
@@ -108,7 +107,7 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
         onFinish?.()
     }
 
-    // ✅ Swipe robusto (funziona anche con scroll)
+    // ✅ Swipe robusto: ignora scroll verticale
     const startRef = useRef({ x: 0, y: 0, t: 0 })
     const onTouchStart = (e) => {
         const touch = e.touches?.[0]
@@ -133,15 +132,22 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
         if (dx > threshold && canPrev) prev()
     }
 
-    // styles
     const muted = "text-[rgb(var(--muted-fg))]"
     const surface = "bg-[rgb(var(--card))] border-[rgb(var(--border))]"
     const soft = "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
 
     return (
-        <div className="min-h-screen w-full bg-[rgb(var(--bg))] text-[rgb(var(--fg))] overflow-hidden flex flex-col">
-            <div className="pt-[env(safe-area-inset-top)]" />
-
+        // ✅ Safe-area su tutti i lati + layout stabile
+        <div
+            className={[
+                "min-h-screen w-full overflow-hidden flex flex-col",
+                "bg-[rgb(var(--bg))] text-[rgb(var(--fg))]",
+                "pt-[env(safe-area-inset-top)]",
+                "pb-[env(safe-area-inset-bottom)]",
+                "pl-[env(safe-area-inset-left)]",
+                "pr-[env(safe-area-inset-right)]",
+            ].join(" ")}
+        >
             {/* HEADER */}
             <div className={`border-b ${surface}`}>
                 <div className="px-4 py-3 flex items-center justify-between gap-3">
@@ -172,6 +178,7 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                         exit={{ opacity: 0, x: -24 }}
                         transition={{ duration: 0.22 }}
                     >
+                        {/* ✅ scroll interno */}
                         <div className="h-full overflow-y-auto px-4 py-6">
                             <div className="mx-auto max-w-md">
                                 <div className="flex items-start gap-4">
@@ -216,18 +223,16 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                                         <div className="flex items-start gap-2">
                                             <Bell className="h-4 w-4 mt-0.5" />
                                             <p className={`text-xs ${muted}`}>
-                                                Tip: se le notifiche non arrivano su Android, in Impostazioni trovi il bottone “Apri impostazioni app”
-                                                e due righe per batteria/permessi.
+                                                Tip: se su Android le notifiche fanno le difficili, in Impostazioni trovi guida e pulsante per i permessi.
                                             </p>
                                         </div>
                                     </div>
                                 )}
 
-                                <p className={`mt-6 text-center text-xs ${muted}`}>
-                                    Swipe a sinistra/destra (orizzontale).
-                                </p>
+                                <p className={`mt-6 text-center text-xs ${muted}`}>Swipe a sinistra/destra (orizzontale).</p>
 
-                                <div className="h-10" />
+                                {/* spazio per non schiacciare sul footer */}
+                                <div className="h-8" />
                             </div>
                         </div>
                     </motion.div>
@@ -254,8 +259,6 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                         </Button>
                     )}
                 </div>
-
-                <div className="pb-[env(safe-area-inset-bottom)]" />
             </div>
         </div>
     )
