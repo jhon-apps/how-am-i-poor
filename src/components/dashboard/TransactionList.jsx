@@ -1,13 +1,15 @@
 import TransactionItem from "./TransactionItem"
 
 export default function TransactionList({ transactions = [], onDelete, onEdit, isPremium, onPremium }) {
+    const card = "bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+    const soft = "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+    const muted = "text-[rgb(var(--muted-fg))]"
+
     if (!transactions.length) {
         return (
-            <div className="rounded-2xl border p-4 bg-white/70 border-slate-200 dark:bg-slate-900/30 dark:border-slate-800">
-                <p className="text-sm text-slate-700 dark:text-slate-300">Nessun movimento</p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Aggiungine uno e vediamo come va a finire.
-                </p>
+            <div className={`rounded-3xl border p-4 shadow-sm ${soft}`}>
+                <p className="text-sm font-semibold text-[rgb(var(--fg))]">Nessun movimento</p>
+                <p className={`mt-1 text-xs ${muted}`}>Aggiungine uno e vediamo come va a finire.</p>
             </div>
         )
     }

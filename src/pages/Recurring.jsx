@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { ArrowLeft, Plus, Repeat, Trash2, Pencil, Lock, X, AlarmClock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import useRecurring from "@/hooks/useRecurring"
@@ -8,6 +8,13 @@ import PremiumHub from "@/components/premium/PremiumHub"
 import BillingNotReadyDialog from "@/components/ui/BillingNotReadyDialog"
 import { APP_CONFIG } from "@/config/config"
 import { computeNextRecurringAt, debugScheduleRecurringSoon } from "@/services/recurringNotifications"
+
+import {
+    getCategoriesByType,
+    getDefaultCategoryByType,
+    isCategoryAllowedForType,
+    getCategoryLabel,
+} from "@/entities/categories"
 
 const INTRO_KEY = "howamipoor:recurringIntroSeen:v1"
 
@@ -22,18 +29,35 @@ function clampDay(v) {
 }
 
 function RecurringForm({ initial, onCancel, onSave }) {
+    const muted = "text-[rgb(var(--muted-fg))]"
+    const soft = "rounded-2xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+
     const [type, setType] = useState(initial?.type ?? "uscita")
     const [description, setDescription] = useState(initial?.description ?? "")
     const [amount, setAmount] = useState(initial?.amount ?? "")
-    const [category, setCategory] = useState(initial?.category ?? "altro")
     const [day, setDay] = useState(initial?.schedule?.day ?? 1)
 
+    // ✅ nel tuo progetto: getCategoriesByType ritorna array di {key,label}
+    const categoriesForType = useMemo(() => getCategoriesByType(type), [type])
+
+    const [category, setCategory] = useState(() => {
+        const from = initial?.category
+        if (from && isCategoryAllowedForType(from, type)) return from
+        return getDefaultCategoryByType(type)
+    })
+
+    // se cambio tipo, riallinea categoria se non compatibile
+    useEffect(() => {
+        setCategory((prev) => {
+            if (prev && isCategoryAllowedForType(prev, type)) return prev
+            return getDefaultCategoryByType(type)
+        })
+    }, [type])
+
+    // notification prefs
     const [notifyEnabled, setNotifyEnabled] = useState(initial?.notify?.enabled ?? true)
     const [notifyTime, setNotifyTime] = useState(initial?.notify?.time ?? "09:00")
     const [daysBefore, setDaysBefore] = useState(initial?.notify?.daysBefore ?? 0)
-
-    const muted = "text-[rgb(var(--muted-fg))]"
-    const soft = "rounded-2xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
 
     const submit = () => {
         const parsed = Number(String(amount).replace(",", "."))
@@ -44,7 +68,7 @@ function RecurringForm({ initial, onCancel, onSave }) {
             type,
             description: String(description).trim(),
             amount: cleanAmount,
-            category: String(category).trim() || "altro",
+            category, // ✅ key della categoria
             schedule: { freq: "monthly", day: clampDay(day) },
             notify: {
                 enabled: !!notifyEnabled,
@@ -58,10 +82,20 @@ function RecurringForm({ initial, onCancel, onSave }) {
     return (
         <div className="space-y-4">
             <div className="flex gap-2">
-                <Button variant={type === "uscita" ? "default" : "outline"} className="flex-1" onClick={() => setType("uscita")} type="button">
+                <Button
+                    variant={type === "uscita" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => setType("uscita")}
+                    type="button"
+                >
                     Uscita
                 </Button>
-                <Button variant={type === "entrata" ? "default" : "outline"} className="flex-1" onClick={() => setType("entrata")} type="button">
+                <Button
+                    variant={type === "entrata" ? "default" : "outline"}
+                    className="flex-1"
+                    onClick={() => setType("entrata")}
+                    type="button"
+                >
                     Entrata
                 </Button>
             </div>
@@ -88,14 +122,20 @@ function RecurringForm({ initial, onCancel, onSave }) {
                     />
                 </div>
 
+                {/* ✅ select categorie (key/label) */}
                 <div className={soft + " p-3 space-y-2"}>
                     <label className={`text-xs ${muted}`}>Categoria</label>
-                    <input
+                    <select
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
                         className="w-full rounded-xl border px-3 py-2 bg-[rgb(var(--card))] border-[rgb(var(--border))]"
-                        placeholder="svago"
-                    />
+                    >
+                        {categoriesForType.map((c) => (
+                            <option key={c.key} value={c.key}>
+                                {c.label ?? getCategoryLabel(c.key)}
+                            </option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
@@ -118,7 +158,7 @@ function RecurringForm({ initial, onCancel, onSave }) {
                 <div className="flex items-center justify-between gap-3">
                     <div>
                         <p className="text-sm font-semibold">Notifica</p>
-                        <p className={`text-xs ${muted}`}>Deve arrivare in background (Android permettendo).</p>
+                        <p className={`text-xs ${muted}`}>Ti avvisa e apre la modale precompilata.</p>
                     </div>
                     <input type="checkbox" checked={notifyEnabled} onChange={(e) => setNotifyEnabled(e.target.checked)} className="h-5 w-5" />
                 </div>
@@ -238,7 +278,7 @@ export default function Recurring({ onBack }) {
                     <p className={`mt-1 text-sm ${muted}`}>
                         Qui gestisci abbonamenti e movimenti fissi (Netflix, affitto, stipendio).
                         <br />
-                        HAIP ti avvisa il giorno dello “scalo” (Premium).
+                        HAIP ti avvisa il giorno dello “scalo” e ti prepara il movimento.
                     </p>
                 </div>
 
@@ -281,9 +321,7 @@ export default function Recurring({ onBack }) {
                 </main>
 
                 <PremiumUpsellDialog open={upsellOpen} onClose={() => setUpsellOpen(false)} onConfirm={() => setHubOpen(true)} reason="premium" />
-
                 <PremiumHub open={hubOpen} onClose={() => setHubOpen(false)} onBillingNotReady={() => setBillingNotReadyOpen(true)} />
-
                 <BillingNotReadyDialog open={billingNotReadyOpen} onClose={() => setBillingNotReadyOpen(false)} />
             </div>
         )
@@ -328,7 +366,7 @@ export default function Recurring({ onBack }) {
                                                 <span className={`ml-2 text-xs ${muted}`}>{r.type === "entrata" ? "Entrata" : "Uscita"}</span>
                                             </p>
                                             <p className={`mt-1 text-sm ${muted}`}>
-                                                {fmtEUR(r.amount)} • {r.category} • ogni mese il giorno {r.schedule.day}
+                                                {fmtEUR(r.amount)} • {getCategoryLabel(r.category || "altro")} • ogni mese il giorno {r.schedule.day}
                                             </p>
                                             <p className={`mt-1 text-xs ${muted}`}>
                                                 Notifica: {r.notify.enabled ? `ON (${r.notify.time}, ${r.notify.daysBefore}g prima)` : "OFF"}
@@ -397,7 +435,6 @@ export default function Recurring({ onBack }) {
                 {showForm && (
                     <div className={`${surface} p-5`}>
                         <p className="text-sm font-extrabold">{editing ? "Modifica ricorrente" : "Nuova ricorrente"}</p>
-
                         <div className="mt-4">
                             <RecurringForm
                                 initial={editing}
