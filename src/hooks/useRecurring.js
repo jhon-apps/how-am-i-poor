@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { applyNotificationSettings } from "@/services/notifications"
 
 const KEY = "howamipoor:recurring:v1"
 const EVENT = "haip:recurring:changed"
@@ -13,8 +14,10 @@ function safeParse(raw, fallback) {
 }
 
 function makeId() {
-    return (globalThis.crypto?.randomUUID?.() ??
-        `rec_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`)
+    return (
+        globalThis.crypto?.randomUUID?.() ??
+        `rec_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+    )
 }
 
 function clampInt(n, min, max, fallback) {
@@ -30,11 +33,9 @@ function normalizeRecurring(r) {
     const amount = Math.max(0, Number(r?.amount) || 0)
     const category = String(r?.category || "altro")
 
-    // v1: only monthly by day-of-month
     const day = clampInt(r?.schedule?.day ?? r?.day, 1, 31, 1)
     const schedule = { freq: "monthly", day }
 
-    // notification prefs (saved, not executed yet)
     const notifyEnabled = !!(r?.notify?.enabled ?? r?.notifyEnabled ?? true)
     const daysBefore = clampInt(r?.notify?.daysBefore ?? r?.daysBefore, 0, 7, 0)
     const time = String(r?.notify?.time ?? r?.time ?? "09:00").slice(0, 5) || "09:00"
@@ -78,11 +79,23 @@ export default function useRecurring() {
         }
     }, [])
 
-    const persist = useCallback((next) => {
-        const normalized = next.map(normalizeRecurring).sort((a, b) => b.updatedAt - a.updatedAt)
-        setItems(normalized)
-        writeAll(normalized)
+    // ✅ usa la stessa pipeline delle notifiche normali
+    const rescheduleAllNotifications = useCallback(() => {
+        // fire-and-forget, non blocca UI
+        applyNotificationSettings().catch(() => {})
     }, [])
+
+    const persist = useCallback(
+        (next) => {
+            const normalized = next.map(normalizeRecurring).sort((a, b) => b.updatedAt - a.updatedAt)
+            setItems(normalized)
+            writeAll(normalized)
+
+            // ✅ dopo ogni modifica ricorrenti: rischedula subito
+            rescheduleAllNotifications()
+        },
+        [rescheduleAllNotifications]
+    )
 
     const add = useCallback(
         (rec) => {
@@ -116,9 +129,7 @@ export default function useRecurring() {
         (id) => {
             const sid = String(id || "")
             if (!sid) return
-            const next = items.map((x) =>
-                x.id === sid ? { ...x, active: !x.active, updatedAt: Date.now() } : x
-            )
+            const next = items.map((x) => (x.id === sid ? { ...x, active: !x.active, updatedAt: Date.now() } : x))
             persist(next)
         },
         [items, persist]

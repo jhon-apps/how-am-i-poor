@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react"
-import { ArrowLeft, Plus, Repeat, Trash2, Pencil, Lock, X } from "lucide-react"
+import { ArrowLeft, Plus, Repeat, Trash2, Pencil, Lock, X, AlarmClock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import useRecurring from "@/hooks/useRecurring"
 import usePremium from "@/hooks/usePremium"
 import PremiumUpsellDialog from "@/components/ui/PremiumUpsellDialog"
 import PremiumHub from "@/components/premium/PremiumHub"
 import BillingNotReadyDialog from "@/components/ui/BillingNotReadyDialog"
+import { APP_CONFIG } from "@/config/config"
+import { computeNextRecurringAt, debugScheduleRecurringSoon } from "@/services/recurringNotifications"
 
 const INTRO_KEY = "howamipoor:recurringIntroSeen:v1"
 
@@ -116,7 +118,7 @@ function RecurringForm({ initial, onCancel, onSave }) {
                 <div className="flex items-center justify-between gap-3">
                     <div>
                         <p className="text-sm font-semibold">Notifica</p>
-                        <p className={`text-xs ${muted}`}>Verrà agganciata nello step successivo.</p>
+                        <p className={`text-xs ${muted}`}>Deve arrivare in background (Android permettendo).</p>
                     </div>
                     <input type="checkbox" checked={notifyEnabled} onChange={(e) => setNotifyEnabled(e.target.checked)} className="h-5 w-5" />
                 </div>
@@ -167,7 +169,6 @@ export default function Recurring({ onBack }) {
     const [editing, setEditing] = useState(null)
     const [showForm, setShowForm] = useState(false)
 
-    // intro first time
     const [showIntro, setShowIntro] = useState(() => {
         try {
             const raw = localStorage.getItem(INTRO_KEY)
@@ -237,7 +238,7 @@ export default function Recurring({ onBack }) {
                     <p className={`mt-1 text-sm ${muted}`}>
                         Qui gestisci abbonamenti e movimenti fissi (Netflix, affitto, stipendio).
                         <br />
-                        Poi HAIP ti avvisa il giorno dello “scalo” (Premium). Sì, è un’altra forma di giudizio.
+                        HAIP ti avvisa il giorno dello “scalo” (Premium).
                     </p>
                 </div>
 
@@ -279,18 +280,9 @@ export default function Recurring({ onBack }) {
                     </div>
                 </main>
 
-                <PremiumUpsellDialog
-                    open={upsellOpen}
-                    onClose={() => setUpsellOpen(false)}
-                    onConfirm={() => setHubOpen(true)}
-                    reason="premium"
-                />
+                <PremiumUpsellDialog open={upsellOpen} onClose={() => setUpsellOpen(false)} onConfirm={() => setHubOpen(true)} reason="premium" />
 
-                <PremiumHub
-                    open={hubOpen}
-                    onClose={() => setHubOpen(false)}
-                    onBillingNotReady={() => setBillingNotReadyOpen(true)}
-                />
+                <PremiumHub open={hubOpen} onClose={() => setHubOpen(false)} onBillingNotReady={() => setBillingNotReadyOpen(true)} />
 
                 <BillingNotReadyDialog open={billingNotReadyOpen} onClose={() => setBillingNotReadyOpen(false)} />
             </div>
@@ -315,7 +307,7 @@ export default function Recurring({ onBack }) {
                         </div>
                     </div>
 
-                    <p className={`text-xs ${muted}`}>Notifiche ricorrenti: prossimo step</p>
+                    <p className={`text-xs ${muted}`}>Notifiche ricorrenti attive</p>
                 </div>
 
                 {items.length === 0 ? (
@@ -325,61 +317,86 @@ export default function Recurring({ onBack }) {
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {items.map((r) => (
-                            <div key={r.id} className={`${surface} p-4`}>
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <p className="font-extrabold truncate">
-                                            {r.description || "(senza nome)"}{" "}
-                                            <span className={`ml-2 text-xs ${muted}`}>{r.type === "entrata" ? "Entrata" : "Uscita"}</span>
-                                        </p>
-                                        <p className={`mt-1 text-sm ${muted}`}>
-                                            {fmtEUR(r.amount)} • {r.category} • ogni mese il giorno {r.schedule.day}
-                                        </p>
-                                        <p className={`mt-1 text-xs ${muted}`}>
-                                            Notifica: {r.notify.enabled ? `ON (${r.notify.time}, ${r.notify.daysBefore}g prima)` : "OFF"}
-                                        </p>
+                        {items.map((r) => {
+                            const nextInfo = r?.notify?.enabled !== false && r?.active !== false ? computeNextRecurringAt(r) : null
+                            return (
+                                <div key={r.id} className={`${surface} p-4`}>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="font-extrabold truncate">
+                                                {r.description || "(senza nome)"}{" "}
+                                                <span className={`ml-2 text-xs ${muted}`}>{r.type === "entrata" ? "Entrata" : "Uscita"}</span>
+                                            </p>
+                                            <p className={`mt-1 text-sm ${muted}`}>
+                                                {fmtEUR(r.amount)} • {r.category} • ogni mese il giorno {r.schedule.day}
+                                            </p>
+                                            <p className={`mt-1 text-xs ${muted}`}>
+                                                Notifica: {r.notify.enabled ? `ON (${r.notify.time}, ${r.notify.daysBefore}g prima)` : "OFF"}
+                                            </p>
+
+                                            {nextInfo && (
+                                                <p className={`mt-2 text-xs ${muted} flex items-center gap-2`}>
+                                                    <AlarmClock className="h-4 w-4" />
+                                                    Prossima: {new Date(nextInfo.at).toLocaleString("it-IT")}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div className="shrink-0 text-right">
+                                            <label className={`text-xs ${muted} mr-2`}>Attiva</label>
+                                            <input type="checkbox" checked={!!r.active} onChange={() => toggleActive(r.id)} className="h-5 w-5" />
+                                        </div>
                                     </div>
 
-                                    <div className="shrink-0 text-right">
-                                        <label className={`text-xs ${muted} mr-2`}>Attiva</label>
-                                        <input type="checkbox" checked={!!r.active} onChange={() => toggleActive(r.id)} className="h-5 w-5" />
+                                    <div className="mt-3 flex justify-end gap-2 flex-wrap">
+                                        {APP_CONFIG.DEV_TOOLS_ENABLED && (
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    const res = await debugScheduleRecurringSoon(r.id, 15)
+                                                    console.log("DEBUG recurring test:", res)
+                                                    alert(res.ok ? "Test schedulato (15s). Metti app in background." : `Errore: ${res.reason}`)
+                                                }}
+                                                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${soft} hover:opacity-90`}
+                                                title="Test 15s"
+                                            >
+                                                <AlarmClock className="h-4 w-4" />
+                                                Test 15s
+                                            </button>
+                                        )}
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setEditing(r)
+                                                setShowForm(true)
+                                            }}
+                                            className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${soft} hover:opacity-90`}
+                                            title="Modifica"
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                            Modifica
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => remove(r.id)}
+                                            className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${soft} hover:opacity-90`}
+                                            title="Elimina"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                            Elimina
+                                        </button>
                                     </div>
                                 </div>
-
-                                <div className="mt-3 flex justify-end gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setEditing(r)
-                                            setShowForm(true)
-                                        }}
-                                        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${soft} hover:opacity-90`}
-                                        title="Modifica"
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                        Modifica
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => remove(r.id)}
-                                        className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${soft} hover:opacity-90`}
-                                        title="Elimina"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                        Elimina
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 )}
 
                 {showForm && (
                     <div className={`${surface} p-5`}>
                         <p className="text-sm font-extrabold">{editing ? "Modifica ricorrente" : "Nuova ricorrente"}</p>
-                        <p className={`mt-1 text-xs ${muted}`}>Mensile (v1). Notifiche nello step 2.</p>
 
                         <div className="mt-4">
                             <RecurringForm
@@ -391,7 +408,6 @@ export default function Recurring({ onBack }) {
                                 onSave={(data) => {
                                     if (editing?.id) update({ ...editing, ...data })
                                     else add(data)
-
                                     setShowForm(false)
                                     setEditing(null)
                                 }}

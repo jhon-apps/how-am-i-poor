@@ -419,6 +419,17 @@ export default function Settings({ onBack }) {
                                 Torna alla Home
                             </Button>
                         </div>
+                        <Button
+                            variant="outline"
+                            onClick={async () => {
+                                const { debugListPendingNotifications } = await import("@/services/notifications")
+                                const res = await debugListPendingNotifications()
+                                console.log("PENDING:", res)
+                                alert(res.ok ? `Pending: ${res.pending.notifications?.length || 0}\nGuarda console/logcat` : `Errore: ${res.reason}`)
+                            }}
+                        >
+                            Debug pending notif
+                        </Button>
                     </section>
                 )}
             </main>

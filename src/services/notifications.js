@@ -246,3 +246,18 @@ export async function debugTestNotification() {
 
     return { ok: true }
 }
+export async function debugListPendingNotifications() {
+    try {
+        const { Capacitor } = await import("@capacitor/core")
+        if (!Capacitor.isNativePlatform()) return { ok: false, reason: "not_native" }
+
+        const { LocalNotifications } = await import("@capacitor/local-notifications")
+        const pending = await LocalNotifications.getPending()
+
+        // pending.notifications: array con id/title/body/schedule
+        return { ok: true, pending }
+    } catch (e) {
+        console.error("debugListPendingNotifications error:", e)
+        return { ok: false, reason: "error", error: String(e?.message || e) }
+    }
+}
