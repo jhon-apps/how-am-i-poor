@@ -4,6 +4,7 @@ export const INCOME_CATEGORIES = [
     { key: "entrate_extra", label: "Entrate extra" },
     { key: "bonus", label: "Bonus" },
     { key: "rimborso", label: "Rimborso" },
+    { key: "prestito", label: "Prestito" }, // ✅ NEW (entrate)
 ]
 
 // === CATEGORIE USCITE ===
@@ -15,12 +16,14 @@ export const EXPENSE_CATEGORIES = [
     { key: "salute", label: "Salute" },
     { key: "svago", label: "Svago" },
     { key: "shopping", label: "Shopping" },
+    { key: "assicurazione", label: "Assicurazione" }, // ✅ NEW (uscite)
+    { key: "prestito", label: "Prestito" }, // ✅ NEW (uscite)
 ]
 
-// fallback sempre disponibile
+// fallback SEMPRE disponibile
 export const FALLBACK_CATEGORY = { key: "altro", label: "Altro" }
 
-// flat list per validazione/label
+// lista unica per label lookup / validazioni
 export const ALL_CATEGORIES = [
     ...INCOME_CATEGORIES,
     ...EXPENSE_CATEGORIES,
@@ -34,9 +37,8 @@ export function getCategoriesByType(type) {
 }
 
 export function getDefaultCategoryByType(type) {
-    if (type === "entrata") return "stipendio"
-    if (type === "uscita") return "cibo"
-    return "altro"
+    const list = getCategoriesByType(type)
+    return list?.[0]?.key ?? FALLBACK_CATEGORY.key
 }
 
 export function isValidCategory(key) {
@@ -49,5 +51,5 @@ export function isCategoryAllowedForType(key, type) {
 }
 
 export function getCategoryLabel(key) {
-    return ALL_CATEGORIES.find((c) => c.key === key)?.label ?? "Altro"
+    return ALL_CATEGORIES.find((c) => c.key === key)?.label ?? FALLBACK_CATEGORY.label
 }

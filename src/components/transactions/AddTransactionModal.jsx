@@ -73,7 +73,11 @@ export default function AddTransactionModal({
     const [manualCategory, setManualCategory] = useState(false)
     const [suggested, setSuggested] = useState(null)
 
-    const categoriesForType = useMemo(() => getCategoriesByType(type), [type])
+    // getCategoriesByType() ritorna OGGETTI {key,label}; qui lavoriamo sempre con chiavi stringa
+    const categoryKeysForType = useMemo(
+        () => getCategoriesByType(type).map((c) => c?.key).filter(Boolean),
+        [type]
+    )
 
     const pills = useMemo(() => {
         const uniq = []
@@ -206,7 +210,9 @@ export default function AddTransactionModal({
                                     }}
                                     className={[
                                         pillBase,
-                                        selected ? "bg-slate-900 text-white border-slate-900" : `${card} ${muted} hover:bg-[rgb(var(--card-2))]`,
+                                        selected
+                                            ? "bg-slate-900 text-white border-slate-900"
+                                            : `${card} ${muted} hover:bg-[rgb(var(--card-2))]`,
                                     ].join(" ")}
                                 >
                                     {getCategoryLabel(k)}
@@ -257,9 +263,9 @@ export default function AddTransactionModal({
                             setFormData((p) => ({ ...p, category: e.target.value }))
                         }}
                     >
-                        {categoriesForType.map((c) => (
-                            <option key={c} value={c}>
-                                {getCategoryLabel(c)}
+                        {categoryKeysForType.map((key) => (
+                            <option key={key} value={key}>
+                                {getCategoryLabel(key)}
                             </option>
                         ))}
                     </select>
