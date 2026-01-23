@@ -58,7 +58,7 @@ export default function AddTransactionModal({
                                                 isLoading,
                                                 recentCategories = [],
                                                 defaultType = "uscita",
-                                                prefill = null, // ✅ NEW
+                                                prefill = null,
                                             }) {
     const initial = useMemo(
         () => buildInitialState({ transaction, prefill, defaultType }),
@@ -71,7 +71,6 @@ export default function AddTransactionModal({
 
     // autocategory
     const [manualCategory, setManualCategory] = useState(false)
-    const [suggested, setSuggested] = useState(null)
 
     // getCategoriesByType() ritorna OGGETTI {key,label}; qui lavoriamo sempre con chiavi stringa
     const categoryKeysForType = useMemo(
@@ -102,7 +101,6 @@ export default function AddTransactionModal({
         setFormData(next.formData)
         setError("")
         setManualCategory(false)
-        setSuggested(null)
     }, [transaction, prefill, defaultType, isOpen])
 
     const setTypeSafe = (nextType) => {
@@ -115,10 +113,10 @@ export default function AddTransactionModal({
         })
     }
 
+    // suggerimento categoria in base a descrizione (se non scelta manualmente)
     useEffect(() => {
         const s = suggestCategory(formData.description, type)
         const valid = s && isCategoryAllowedForType(s, type) ? s : null
-        setSuggested(valid)
 
         if (!manualCategory && valid) {
             setFormData((p) => (p.category === valid ? p : { ...p, category: valid }))

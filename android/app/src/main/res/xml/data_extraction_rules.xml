@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
 
-    <!-- Android 12+ -->
+    <!-- Android 12+ : niente backup cloud -->
     <cloud-backup>
         <exclude domain="root" />
         <exclude domain="sharedpref" />
@@ -10,6 +10,7 @@
         <exclude domain="cache" />
     </cloud-backup>
 
+    <!-- Trasferimento dati su nuovo dispositivo -->
     <device-transfer>
         <exclude domain="root" />
         <exclude domain="sharedpref" />

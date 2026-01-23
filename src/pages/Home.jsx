@@ -20,7 +20,6 @@ import AdSlot from "@/components/ads/AdSlot"
 import useTransactions from "@/hooks/useTransactions"
 import usePremium from "@/hooks/usePremium"
 import useAdsConsent from "@/hooks/useAdsConsent"
-import useDebouncedValue from "@/hooks/useDebouncedValue"
 import useTheme from "@/hooks/useTheme"
 
 const PENDING_KEY = "howamipoor:pendingAction:v1"
@@ -51,10 +50,6 @@ function formatEUR(n) {
     return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(Number(n) || 0)
 }
 
-function norm(s) {
-    return String(s || "").toLowerCase().trim()
-}
-
 function isWithinLastDays(dateISO, days) {
     const d = new Date(dateISO)
     if (Number.isNaN(d.getTime())) return false
@@ -73,13 +68,11 @@ export default function Home({ onOpenSettings }) {
 
     // all transactions dialog
     const [allOpen, setAllOpen] = useState(false)
+    const [allInitialQuery, setAllInitialQuery] = useState("")
 
     // left panel toggles
     const [leftView, setLeftView] = useState("chart")
     const [chartRange, setChartRange] = useState("30d")
-
-    // saldo toggle (totale vs ultimi 30 giorni)
-    const [balanceScope, setBalanceScope] = useState("total")
 
     // undo
     const [undoOpen, setUndoOpen] = useState(false)
@@ -92,9 +85,8 @@ export default function Home({ onOpenSettings }) {
     const [premiumHubOpen, setPremiumHubOpen] = useState(false)
     const [billingNotReadyOpen, setBillingNotReadyOpen] = useState(false)
 
-    // search (home list only)
-    const [query, setQuery] = useState("")
-    const debouncedQuery = useDebouncedValue(query, 200)
+    // search (Premium): la Home fa solo da "lente" e apre l'elenco completo
+    const [homeSearch, setHomeSearch] = useState("")
 
     // hooks
     const { isPremium } = usePremium()
@@ -103,21 +95,7 @@ export default function Home({ onOpenSettings }) {
     const ThemeIcon = theme === "dark" ? Moon : Sun
 
     const { transactions, isLoading, add, update, remove, restore, totals } = useTransactions()
-    const totalIncome = totals.income
-    const totalExpenses = totals.expenses
-    const totalBalance = totals.balance
-
-    const totals30d = useMemo(() => {
-        const tx30 = transactions.filter((t) => isWithinLastDays(t.date, 30))
-        const income = tx30.filter((t) => t.type === "entrata").reduce((s, t) => s + (Number(t.amount) || 0), 0)
-        const expenses = tx30.filter((t) => t.type === "uscita").reduce((s, t) => s + (Number(t.amount) || 0), 0)
-        return { income, expenses, balance: income - expenses }
-    }, [transactions])
-
-    const scopedTotals = useMemo(() => {
-        if (balanceScope === "30d") return totals30d
-        return { income: totalIncome, expenses: totalExpenses, balance: totalBalance }
-    }, [balanceScope, totals30d, totalIncome, totalExpenses, totalBalance])
+    const { income, expenses, balance } = totals
 
     const hasAny = useMemo(() => transactions.length > 0, [transactions])
 
@@ -148,17 +126,21 @@ export default function Home({ onOpenSettings }) {
         return uniq
     }, [transactions])
 
-    // insight: segue il toggle saldo
-    const scopeLabel = balanceScope === "30d" ? "ultimi 30 giorni" : "saldo totale"
+    // insight mese corrente
+    const monthKey = useMemo(() => new Date().toISOString().slice(0, 7), [])
+    const monthStats = useMemo(() => {
+        const monthTx = transactions.filter((t) => String(t.date).slice(0, 7) === monthKey)
+        const mi = monthTx.filter((t) => t.type === "entrata").reduce((s, t) => s + (Number(t.amount) || 0), 0)
+        const me = monthTx.filter((t) => t.type === "uscita").reduce((s, t) => s + (Number(t.amount) || 0), 0)
+        return { mi, me, net: mi - me }
+    }, [transactions, monthKey])
 
     const insightText = useMemo(() => {
         if (!hasAny) return "Aggiungi 2–3 movimenti e iniziamo a giudicare in silenzio."
-
-        const net = Number(scopedTotals.balance) || 0
-        if (net < 0) return `Sei sotto di ${formatEUR(Math.abs(net))} (${scopeLabel}). Complimenti a chi ti sopporta.`
-        if (net === 0) return `Equilibrio perfetto (${scopeLabel}): ${formatEUR(0)}. Sospetto.`
-        return `Sei sopra di ${formatEUR(net)} (${scopeLabel}). Non rovinare tutto domani.`
-    }, [hasAny, scopedTotals.balance, scopeLabel])
+        if (monthStats.net < 0) return `Questo mese sei a ${formatEUR(monthStats.net)}. Respira. È solo matematica.`
+        if (monthStats.net === 0) return `Equilibrio perfetto: ${formatEUR(0)}. Sospetto.`
+        return `Questo mese sei a ${formatEUR(monthStats.net)}. Continua così (finché dura).`
+    }, [hasAny, monthStats.net])
 
     // cleanup timer undo
     useEffect(() => {
@@ -214,14 +196,6 @@ export default function Home({ onOpenSettings }) {
         return transactions.filter((t) => isWithinLastDays(t.date, 30))
     }, [transactions, effectiveRange])
 
-    // search in home list (premium gated) — solo sugli item visibili
-    const searchedVisible = useMemo(() => {
-        if (!isPremium) return homeVisible
-        const q = norm(debouncedQuery)
-        if (!q) return homeVisible
-        return homeVisible.filter((t) => norm(t.description).includes(q) || norm(t.category).includes(q))
-    }, [homeVisible, isPremium, debouncedQuery])
-
     // open create/edit modal
     const openNewTransaction = (type) => {
         setEditingTx(null)
@@ -271,203 +245,151 @@ export default function Home({ onOpenSettings }) {
     const lastScrollY = useRef(0)
 
     useEffect(() => {
-        let ticking = false
         const onScroll = () => {
-            if (ticking) return
-            ticking = true
-            window.requestAnimationFrame(() => {
-                const currentY = window.scrollY || 0
-                if (currentY < 8) setShowHeader(true)
-                else if (currentY > lastScrollY.current && currentY > 64) setShowHeader(false)
-                else if (currentY < lastScrollY.current) setShowHeader(true)
-                lastScrollY.current = currentY
-                ticking = false
-            })
+            const y = window.scrollY || 0
+            const goingDown = y > lastScrollY.current
+            if (goingDown && y > 24) setShowHeader(false)
+            else setShowHeader(true)
+            lastScrollY.current = y
         }
         window.addEventListener("scroll", onScroll, { passive: true })
         return () => window.removeEventListener("scroll", onScroll)
     }, [])
 
-    // styles
-    const surface = "rounded-3xl border shadow-sm bg-[rgb(var(--card))] border-[rgb(var(--border))]"
-    const surfaceSoft = "rounded-2xl border shadow-sm bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
     const muted = "text-[rgb(var(--muted-fg))]"
 
     return (
-        <div className="min-h-screen bg-[rgb(var(--bg))] text-[rgb(var(--fg))] pb-[env(safe-area-inset-bottom)]">
+        <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
             {/* Header */}
             <div
                 className={[
-                    "fixed top-0 left-0 right-0 z-40 border-b transition-transform duration-300",
-                    "bg-[rgb(var(--card))] border-[rgb(var(--border))]",
+                    "sticky top-0 z-20 transition-transform duration-200",
                     showHeader ? "translate-y-0" : "-translate-y-full",
+                    "bg-[rgb(var(--bg))]/80 backdrop-blur-xl",
                 ].join(" ")}
             >
                 <div className="pt-[env(safe-area-inset-top)]" />
-                <div className="mx-auto max-w-6xl px-3 py-2 md:px-4 md:py-3">
-                    <div className="flex items-center justify-between gap-2">
-                        {/* LEFT */}
-                        <div className="min-w-0">
-                            <h1 className="font-extrabold tracking-tight leading-tight">
-                                <span className="block md:hidden text-base">HAIP</span>
-                                <span className="hidden md:block text-lg">HOW AM I POOR</span>
-                            </h1>
+                <div className="px-4 py-4 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                        <h1 className="text-lg font-extrabold tracking-tight">HOW AM I POOR</h1>
+                        <p className={`text-xs ${muted}`}>I miei conti • local storage • giudizio quotidiano</p>
+                    </div>
 
-                            <p className={`text-xs ${muted} truncate max-w-[18rem] sm:max-w-none`}>
-                                <span className="md:hidden">I miei conti</span>
-                                <span className="hidden md:inline">I miei conti • local storage • giudizio quotidiano</span>
-                            </p>
-                        </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button
+                            type="button"
+                            className="h-10 px-3 rounded-2xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] text-sm font-semibold hover:bg-[rgb(var(--card-2))]"
+                            onClick={() => openPremium("premium")}
+                            title="Premium"
+                        >
+                            Premium
+                        </button>
 
-                        {/* RIGHT */}
-                        <div className="flex items-center gap-2 shrink-0">
-                            {/* Premium: glow più spesso (solo scritta) */}
-                            <Button
-                                variant="outline"
-                                className="h-9 rounded-xl px-3 md:h-10 md:px-4"
-                                onClick={() => setPremiumHubOpen(true)}
-                                title="Premium"
-                            >
-                                <motion.span
-                                    animate={{
-                                        opacity: [1, 0.85, 1],
-                                        textShadow: [
-                                            "0 0 0px rgba(0,0,0,0)",
-                                            "0 0 14px rgba(251,191,36,0.85)",
-                                            "0 0 0px rgba(0,0,0,0)",
-                                        ],
-                                    }}
-                                    transition={{
-                                        duration: 1.2,
-                                        repeat: Infinity,
-                                        repeatDelay: 2.2,
-                                        ease: "easeInOut",
-                                    }}
-                                    className="text-amber-300 font-extrabold tracking-wide"
-                                >
-                                    Premium
-                                </motion.span>
-                            </Button>
+                        <button
+                            type="button"
+                            className="h-10 w-10 rounded-2xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] flex items-center justify-center hover:bg-[rgb(var(--card-2))]"
+                            onClick={toggleTheme}
+                            title="Tema"
+                        >
+                            <ThemeIcon className="h-4 w-4" />
+                        </button>
 
-                            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Cambia tema">
-                                <ThemeIcon className="h-4 w-4" />
-                            </Button>
-
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={onOpenSettings}
-                                aria-label="Impostazioni"
-                                title="Impostazioni"
-                                className="h-9 w-9 rounded-xl"
-                            >
-                                <SettingsIcon className="h-5 w-5" />
-                            </Button>
-                        </div>
+                        <button
+                            type="button"
+                            className="h-10 w-10 rounded-2xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] flex items-center justify-center hover:bg-[rgb(var(--card-2))]"
+                            onClick={onOpenSettings}
+                            title="Impostazioni"
+                        >
+                            <SettingsIcon className="h-4 w-4" />
+                        </button>
                     </div>
                 </div>
             </div>
 
-            {/* Spacer per header fixed */}
-            <div className="h-[64px] md:h-[72px]" />
+            <main className="px-4 pb-10 pt-2">
+                <div className="max-w-6xl mx-auto">
+                    <BalanceCard />
 
-            <main className="mx-auto max-w-6xl px-3 sm:px-4 py-5 md:py-8 space-y-5 md:space-y-6 pb-16">
-                {isLoading ? (
-                    <div className="space-y-6">
-                        <div className="h-52 rounded-3xl border animate-pulse bg-[rgb(var(--card-2))] border-[rgb(var(--border))]" />
-                        <div className="grid lg:grid-cols-5 gap-6">
-                            <div className="lg:col-span-2 h-80 rounded-3xl border animate-pulse bg-[rgb(var(--card-2))] border-[rgb(var(--border))]" />
-                            <div className="lg:col-span-3 h-80 rounded-3xl border animate-pulse bg-[rgb(var(--card-2))] border-[rgb(var(--border))]" />
+                    <div className="mt-3 rounded-3xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] p-5">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0">
+                                <p className="text-sm font-extrabold tracking-tight">😈 Verdetto del giorno</p>
+                                <p className={`mt-1 text-sm ${muted}`}>{insightText}</p>
+                            </div>
+                            <Button variant="outline" className="shrink-0" onClick={() => openNewTransaction("uscita")}>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Nuovo
+                            </Button>
                         </div>
                     </div>
-                ) : (
-                    <>
-                        <BalanceCard
-                            balance={scopedTotals.balance}
-                            income={scopedTotals.income}
-                            expenses={scopedTotals.expenses}
-                            scope={balanceScope}
-                            onScopeChange={setBalanceScope}
-                            onAdd={(type) => openNewTransaction(type)}
-                        />
 
-                        {/* Insight */}
-                        <div className={`${surface} p-4 md:p-5`}>
-                            <div className="flex items-start gap-3">
-                                <div className="mt-1 h-10 w-1.5 rounded-full bg-slate-900" />
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-9 w-9 shrink-0 rounded-2xl bg-[rgb(var(--muted))] flex items-center justify-center">
-                                            <span className="text-sm">😈</span>
+                    <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-top" />
+
+                    {isLoading ? (
+                        <div className={`mt-6 text-sm ${muted}`}>Carico i tuoi rimpianti…</div>
+                    ) : (
+                        <>
+                            <div className="mt-6 grid grid-cols-1 lg:grid-cols-5 gap-4">
+                                {/* LEFT */}
+                                <div className="lg:col-span-2 min-w-0 space-y-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <h2 className="text-base font-extrabold tracking-tight">Grafico</h2>
+                                            <p className={`text-xs ${muted}`}>{isPremium ? "30 giorni / Tutto" : "Solo 30 giorni (free)"}</p>
                                         </div>
-                                        <p className={`text-xs font-semibold uppercase tracking-wide ${muted}`}>Verdetto del giorno</p>
+
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => setLeftView("chart")}
+                                                className={[
+                                                    "h-9 px-3 rounded-2xl border text-xs font-semibold",
+                                                    leftView === "chart"
+                                                        ? "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+                                                        : "bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]",
+                                                ].join(" ")}
+                                            >
+                                                Elenco
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setLeftView("breakdown")}
+                                                className={[
+                                                    "h-9 px-3 rounded-2xl border text-xs font-semibold",
+                                                    leftView === "breakdown"
+                                                        ? "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+                                                        : "bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]",
+                                                ].join(" ")}
+                                            >
+                                                Distribuzione
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <p className="mt-2 text-base md:text-lg font-extrabold tracking-tight leading-snug select-none">
-                                        {insightText}
-                                    </p>
-
-                                    {hasAny && (
-                                        <p className={`mt-2 text-xs ${muted}`}>
-                                            {balanceScope === "30d" ? "Ultimi 30 giorni" : "Totale"}: entrate {formatEUR(scopedTotals.income)} • uscite{" "}
-                                            {formatEUR(scopedTotals.expenses)} • netto{" "}
-                                            <span className="font-semibold">{formatEUR(scopedTotals.balance)}</span>
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-top" />
-
-                        <div className="grid lg:grid-cols-5 gap-5 md:gap-6">
-                            {/* LEFT */}
-                            <div className="lg:col-span-2 min-w-0 min-h-[360px] space-y-3">
-                                <div className="flex w-full flex-wrap items-center justify-between gap-2 min-w-0">
-                                    <div className={`${surfaceSoft} p-1 inline-flex flex-wrap min-w-0`}>
+                                    <div className="flex items-center gap-2">
                                         <button
-                                            onClick={() => setLeftView("chart")}
-                                            className={[
-                                                "px-3 py-2 text-sm rounded-xl transition whitespace-nowrap",
-                                                leftView === "chart" ? "bg-slate-900 text-white" : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
-                                            ].join(" ")}
-                                        >
-                                            Grafico
-                                        </button>
-                                        <button
-                                            onClick={() => setLeftView("list")}
-                                            className={[
-                                                "px-3 py-2 text-sm rounded-xl transition whitespace-nowrap",
-                                                leftView === "list" ? "bg-slate-900 text-white" : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
-                                            ].join(" ")}
-                                        >
-                                            Elenco
-                                        </button>
-                                    </div>
-
-                                    <div className={`${surfaceSoft} p-1 inline-flex flex-wrap min-w-0`}>
-                                        <button
+                                            type="button"
                                             onClick={() => setChartRange("30d")}
                                             className={[
-                                                "px-3 py-2 text-sm rounded-xl transition whitespace-nowrap",
-                                                effectiveRange === "30d" ? "bg-slate-900 text-white" : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
+                                                "h-9 px-3 rounded-2xl border text-xs font-semibold",
+                                                effectiveRange === "30d"
+                                                    ? "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+                                                    : "bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]",
                                             ].join(" ")}
-                                            title="Ultimi 30 giorni"
+                                            title="30 giorni"
                                         >
                                             30 giorni
                                         </button>
 
                                         <button
-                                            onClick={() => {
-                                                if (!isPremium) {
-                                                    openPremium("history")
-                                                    return
-                                                }
-                                                setChartRange("all")
-                                            }}
+                                            type="button"
+                                            onClick={() => (isPremium ? setChartRange("all") : openPremium("chart_all"))}
                                             className={[
-                                                "px-3 py-2 text-sm rounded-xl transition flex items-center gap-2 whitespace-nowrap",
-                                                effectiveRange === "all" ? "bg-slate-900 text-white" : `text-[rgb(var(--fg))] hover:bg-[rgb(var(--card))]`,
+                                                "h-9 px-3 rounded-2xl border text-xs font-semibold inline-flex items-center gap-2",
+                                                effectiveRange === "all"
+                                                    ? "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+                                                    : "bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]",
                                             ].join(" ")}
                                             title={isPremium ? "Tutto" : "Tutto (Premium)"}
                                         >
@@ -475,140 +397,153 @@ export default function Home({ onOpenSettings }) {
                                             Tutto
                                         </button>
                                     </div>
+
+                                    <div className="w-full min-w-0 overflow-hidden">
+                                        {leftView === "chart" ? (
+                                            <ExpenseChart transactions={chartTransactions} />
+                                        ) : (
+                                            <CategoryBreakdownList transactions={chartTransactions} />
+                                        )}
+                                    </div>
                                 </div>
 
-                                <div className="w-full min-w-0 overflow-hidden">
-                                    {leftView === "chart" ? (
-                                        <ExpenseChart transactions={chartTransactions} />
-                                    ) : (
-                                        <CategoryBreakdownList transactions={chartTransactions} />
+                                {/* RIGHT */}
+                                <div className="lg:col-span-3 min-w-0 space-y-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <h2 className="text-base font-extrabold tracking-tight">Movimenti</h2>
+                                            <p className={`text-xs ${muted}`}>Ultimi 5. Per farti male con calma.</p>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setAllOpen(true)}
+                                            className="shrink-0 rounded-xl border px-3 py-2 text-sm bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]"
+                                            title="Apri elenco completo"
+                                        >
+                                            Vedi tutti
+                                        </button>
+                                    </div>
+
+                                    {/* ✅ Search Premium vero: apre l'elenco completo con query */}
+                                    <div className="flex items-center gap-2 w-full min-w-0">
+                                        <div className="relative flex-1 min-w-0">
+                                            <input
+                                                value={isPremium ? homeSearch : ""}
+                                                onChange={(e) => {
+                                                    if (!isPremium) return
+                                                    const v = e.target.value
+                                                    setHomeSearch(v)
+                                                    setAllInitialQuery(v)
+                                                    setAllOpen(true)
+                                                }}
+                                                readOnly={!isPremium}
+                                                onClick={() => {
+                                                    if (!isPremium) return openPremium("search")
+                                                    setAllInitialQuery(homeSearch)
+                                                    setAllOpen(true)
+                                                }}
+                                                placeholder={isPremium ? "Cerca tra tutti i movimenti..." : "Cerca movimenti (Premium)"}
+                                                className={[
+                                                    "w-full max-w-full min-w-0 rounded-2xl border px-3 py-2 text-sm outline-none shadow-sm",
+                                                    "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
+                                                    !isPremium ? "cursor-pointer pr-10" : "",
+                                                ].join(" ")}
+                                            />
+                                            {!isPremium && (
+                                                <div className={`absolute right-3 top-1/2 -translate-y-1/2 ${muted} pointer-events-none`}>
+                                                    <Lock className="h-4 w-4" />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <Button
+                                            variant="outline"
+                                            className="h-10 rounded-2xl px-3 shrink-0"
+                                            onClick={() => (window.location.hash = "#/recurring")}
+                                            title="Ricorrenti"
+                                        >
+                                            <Repeat className="h-4 w-4 mr-2" />
+                                            Ricorrenti
+                                        </Button>
+                                    </div>
+
+                                    <div className="w-full min-w-0 overflow-hidden">
+                                        <TransactionList
+                                            transactions={homeVisible}
+                                            onDelete={handleDelete}
+                                            onEdit={(tx) => openEditTransaction(tx)}
+                                            isPremium={isPremium}
+                                            onPremium={openPremium}
+                                        />
+                                    </div>
+
+                                    {!isPremium && homeLocked.length > 0 && (
+                                        <div className="pt-3">
+                                            <div className="relative">
+                                                <div className="pointer-events-none select-none blur-[10px] opacity-60">
+                                                    <TransactionList
+                                                        transactions={homeLocked}
+                                                        onDelete={() => {}}
+                                                        onEdit={() => {}}
+                                                        isPremium={false}
+                                                        onPremium={openPremium}
+                                                    />
+                                                </div>
+
+                                                <div
+                                                    className="absolute inset-0 rounded-3xl bg-[linear-gradient(to_bottom,rgba(0,0,0,0.10),rgba(0,0,0,0.45))]"
+                                                    aria-hidden="true"
+                                                />
+
+                                                <div className="absolute inset-x-0 bottom-3 flex justify-center">
+                                                    <button
+                                                        onClick={() => openPremium("history")}
+                                                        className="inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm bg-[rgb(var(--card))] border-[rgb(var(--border))] shadow-lg"
+                                                        title="Sblocca storico"
+                                                    >
+                                                        <Lock className="h-4 w-4" />
+                                                        Storico Premium (oltre 30 giorni)
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                             </div>
 
-                            {/* RIGHT */}
-                            <div className="lg:col-span-3 min-w-0 space-y-3">
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="min-w-0">
-                                        <h2 className="text-base font-extrabold tracking-tight">Movimenti</h2>
-                                        <p className={`text-xs ${muted}`}>Ultimi 5. Per farti male con calma.</p>
-                                    </div>
+                            <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-bottom" />
 
-                                    <button
-                                        type="button"
-                                        onClick={() => setAllOpen(true)}
-                                        className="shrink-0 rounded-xl border px-3 py-2 text-sm bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]"
-                                        title="Apri elenco completo"
-                                    >
-                                        Vedi tutti
-                                    </button>
-                                </div>
+                            <footer className={`mt-10 text-center text-xs ${muted}`}>
+                                <a
+                                    href="https://jhon-apps.github.io/how-am-i-poor/privacy.html"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline hover:opacity-80"
+                                >
+                                    Privacy Policy
+                                </a>
+                            </footer>
 
-                                {/* ✅ Search + Ricorrenti affianco (chiaro) */}
-                                <div className="flex items-center gap-2 w-full min-w-0">
-                                    <div className="relative flex-1 min-w-0">
-                                        <input
-                                            value={isPremium ? query : ""}
-                                            onChange={(e) => setQuery(e.target.value)}
-                                            readOnly={!isPremium}
-                                            onClick={() => {
-                                                if (!isPremium) openPremium("search")
-                                            }}
-                                            placeholder={isPremium ? "Cerca (ultimi 5)..." : "Cerca movimenti (Premium)"}
-                                            className={[
-                                                "w-full max-w-full min-w-0 rounded-2xl border px-3 py-2 text-sm outline-none shadow-sm",
-                                                "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
-                                                !isPremium ? "cursor-pointer pr-10" : "",
-                                            ].join(" ")}
-                                        />
-                                        {!isPremium && (
-                                            <div className={`absolute right-3 top-1/2 -translate-y-1/2 ${muted} pointer-events-none`}>
-                                                <Lock className="h-4 w-4" />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <Button
-                                        variant="outline"
-                                        className="h-10 rounded-2xl px-3 shrink-0"
-                                        onClick={() => (window.location.hash = "#/recurring")}
-                                        title="Ricorrenti"
-                                    >
-                                        <Repeat className="h-4 w-4 mr-2" />
-                                        Ricorrenti
-                                    </Button>
-                                </div>
-
-                                <div className="w-full min-w-0 overflow-hidden">
-                                    <TransactionList
-                                        transactions={searchedVisible}
-                                        onDelete={handleDelete}
-                                        onEdit={(tx) => openEditTransaction(tx)}
-                                        isPremium={isPremium}
-                                        onPremium={openPremium}
-                                    />
-                                </div>
-
-                                {!isPremium && homeLocked.length > 0 && (
-                                    <div className="pt-3">
-                                        <div className="relative">
-                                            <div className="pointer-events-none select-none blur-[10px] opacity-60">
-                                                <TransactionList
-                                                    transactions={homeLocked}
-                                                    onDelete={() => {}}
-                                                    onEdit={() => {}}
-                                                    isPremium={false}
-                                                    onPremium={openPremium}
-                                                />
-                                            </div>
-
-                                            <div
-                                                className="absolute inset-0 rounded-3xl bg-[linear-gradient(to_bottom,rgba(0,0,0,0.10),rgba(0,0,0,0.45))]"
-                                                aria-hidden="true"
-                                            />
-
-                                            <div className="absolute inset-x-0 bottom-3 flex justify-center">
-                                                <button
-                                                    onClick={() => openPremium("history")}
-                                                    className="inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm bg-[rgb(var(--card))] border-[rgb(var(--border))] shadow-lg"
-                                                    title="Sblocca storico"
-                                                >
-                                                    <Lock className="h-4 w-4" />
-                                                    Storico Premium (oltre 30 giorni)
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-bottom" />
-
-                        <footer className={`mt-10 text-center text-xs ${muted}`}>
-                            <a
-                                href="https://jhon-apps.github.io/how-am-i-poor/privacy.html"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline hover:opacity-80"
-                            >
-                                Privacy Policy
-                            </a>
-                        </footer>
-
-                        <div className={`mt-10 text-center text-xs ${muted}`}>Built by JhonApps - jhon-apps.github.io</div>
-                    </>
-                )}
+                            <div className={`mt-10 text-center text-xs ${muted}`}>Built by JhonApps - jhon-apps.github.io</div>
+                        </>
+                    )}
+                </div>
             </main>
 
             <AllTransactionsDialog
                 open={allOpen}
-                onClose={() => setAllOpen(false)}
+                onClose={() => {
+                    setAllOpen(false)
+                    setAllInitialQuery("")
+                    setHomeSearch("")
+                }}
                 transactions={transactions}
                 isPremium={isPremium}
                 onPremium={openPremiumFromAllDialog}
                 onEdit={(tx) => openEditTransaction(tx)}
                 onDelete={handleDelete}
+                initialQuery={allInitialQuery}
             />
 
             <AddTransactionModal
@@ -658,10 +593,7 @@ export default function Home({ onOpenSettings }) {
                 onBillingNotReady={() => setBillingNotReadyOpen(true)}
             />
 
-            <BillingNotReadyDialog
-                open={billingNotReadyOpen}
-                onClose={() => setBillingNotReadyOpen(false)}
-            />
+            <BillingNotReadyDialog open={billingNotReadyOpen} onClose={() => setBillingNotReadyOpen(false)} />
 
             <motion.button
                 initial={{ scale: 0 }}
