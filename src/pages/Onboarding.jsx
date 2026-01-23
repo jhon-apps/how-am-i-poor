@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { ArrowLeft, ArrowRight, Check, Sparkles, Wallet, PieChart, Lock, Bell } from "lucide-react"
+import { AnimatePresence, motion } from "framer-motion"
+import { ArrowLeft, ArrowRight, Bell, Check, Lock, PieChart, Sparkles, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const USER_KEY = "howamipoor:user:v1"
@@ -34,63 +34,81 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
     }, [name])
 
     const pages = useMemo(() => {
+        const nome = String(name || "").trim()
+        const chiamata = nome ? nome : "campione"
+
         return [
             {
                 key: "why",
                 title: "HAIP: a cosa serve",
-                subtitle: "A sapere dove finiscono i soldi. Triste ma utile.",
+                subtitle: "A capire dove spariscono i soldi. Spoiler: non è magia.",
                 icon: Sparkles,
-                body:
-                    "Registri entrate/uscite.\n" +
-                    "HAIP ti mostra la verità.\n" +
-                    "Tu fai finta di niente (finché puoi).",
-                bullets: ["Local-first (tutto sul device)", "Panoramica chiara", "Zero scuse"],
+                body: `Segni entrate e uscite.
+HAIP ti mostra la verità.
+
+E tu puoi continuare a fare finta di niente… finché il conto regge.`,
+                bullets: ["Tutto resta sul telefono", "Panoramica pulita", "Zero scuse, zero autoinganni"],
             },
             {
                 key: "name",
                 title: "Come ti chiami?",
-                subtitle: "Così posso giudicarti con rispetto 😈",
+                subtitle: "Così posso giudicarti con educazione 😈",
                 icon: Wallet,
-                body:
-                    "Userò il tuo nome in messaggi e notifiche.\n" +
-                    "Puoi lasciarlo vuoto, ma poi non piangere.",
+                body: `Userò il tuo nome nei messaggi e nelle notifiche.
+Puoi lasciarlo vuoto, ma poi non lamentarti se ti chiamo "campione".`,
                 input: true,
             },
             {
                 key: "how",
                 title: "Come si usa",
-                subtitle: "Due tap e via.",
+                subtitle: "Pochi tocchi. Il resto è autocontrollo (auguri).",
                 icon: Wallet,
-                body:
-                    "Aggiungi movimenti da Entrate/Uscite o col +.\n" +
-                    "In Home vedi gli ultimi 5: niente lista infinita.",
-                bullets: ["Aggiungi / modifica", "Undo eliminazione", "Home = pulita"],
+                body: `Aggiungi un movimento da Entrate/Uscite o col tasto +.
+Nella schermata iniziale vedi solo gli ultimi 5: ordine, non caos.`,
+                bullets: [
+                    "Aggiungi / modifica",
+                    "Annulla eliminazione (per 5 secondi)",
+                    "Schermata iniziale = essenziale",
+                ],
             },
             {
                 key: "insights",
-                title: "Grafici & categorie",
-                subtitle: "Capisci dove bruci tutto.",
+                title: "Categorie e grafico",
+                subtitle: "Capisci dove bruci tutto… con prove.",
                 icon: PieChart,
-                body:
-                    "Grafico e categorie ti dicono dove vanno i soldi.\n" +
-                    "FREE: ultimi 30 giorni.\n" +
-                    "Se vuoi “Tutto”… ci arriviamo.",
-                bullets: ["Grafico spese", "Breakdown categorie", "30 giorni in FREE"],
+                body: `Grafico e categorie ti dicono dove vanno i soldi.
+Nella versione gratuita ti mostro gli ultimi 30 giorni.
+
+Se vuoi guardare tutto lo storico (e farti male davvero)… ci arriviamo tra poco.`,
+                bullets: ["Riepilogo spese", "Dettaglio per categoria", "Ultimi 30 giorni nella versione gratuita"],
             },
             {
                 key: "premium",
-                title: "Premium",
-                subtitle: "Memoria, ricerca, zero ads.",
+                title: "Premium: cosa cambia davvero",
+                subtitle: "Qui finisce la beneficenza.",
                 icon: Lock,
-                body:
-                    "FREE: oltre 30 giorni = blur.\n" +
-                    "Premium: storico completo + ricerca vera + niente pubblicità.\n" +
-                    "E sì, ti mando promemoria se sparisci.",
-                bullets: ["Storico completo", "Ricerca completa", "Notifiche utili"],
+                body: `Versione gratuita:
+• Oltre 30 giorni lo storico è sfocato (sì, apposta).
+• La ricerca completa dei movimenti è bloccata.
+• Il grafico resta sui 30 giorni.
+
+Versione Premium:
+• Storico completo.
+• Ricerca completa.
+• Grafico anche su "Tutto".
+• Ricorrenti: abbonamenti ed entrate fisse con promemoria.
+
+Traduzione: ${chiamata}, con Premium non hai più scuse. Solo numeri.`,
+                bullets: [
+                    "Storico completo",
+                    "Ricerca completa",
+                    "Ricorrenti (abbonamenti/entrate fisse)",
+                    "Grafico su tutto",
+                ],
                 footerNote: true,
             },
         ]
-    }, [])
+    }, [name])
 
     const total = pages.length
     const current = pages[step]
@@ -107,7 +125,7 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
         onFinish?.()
     }
 
-    // ✅ Swipe robusto: ignora scroll verticale
+    // Scorrimento laterale robusto: ignora lo scorrimento verticale
     const startRef = useRef({ x: 0, y: 0, t: 0 })
     const onTouchStart = (e) => {
         const touch = e.touches?.[0]
@@ -137,7 +155,6 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
     const soft = "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
 
     return (
-        // ✅ Safe-area su tutti i lati + layout stabile
         <div
             className={[
                 "min-h-screen w-full overflow-hidden flex flex-col",
@@ -178,11 +195,13 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                         exit={{ opacity: 0, x: -24 }}
                         transition={{ duration: 0.22 }}
                     >
-                        {/* ✅ scroll interno */}
+                        {/* scroll interno */}
                         <div className="h-full overflow-y-auto px-4 py-6">
                             <div className="mx-auto max-w-md">
                                 <div className="flex items-start gap-4">
-                                    <div className={`h-12 w-12 rounded-2xl border ${soft} flex items-center justify-center shrink-0`}>
+                                    <div
+                                        className={`h-12 w-12 rounded-2xl border ${soft} flex items-center justify-center shrink-0`}
+                                    >
                                         <Icon className="h-6 w-6" />
                                     </div>
 
@@ -214,7 +233,9 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                                                 `${soft} text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]`,
                                             ].join(" ")}
                                         />
-                                        <p className={`mt-2 text-xs ${muted}`}>Se lo lasci vuoto, userò un giudizio generico.</p>
+                                        <p className={`mt-2 text-xs ${muted}`}>
+                                            Se lo lasci vuoto, userò un giudizio generico.
+                                        </p>
                                     </div>
                                 )}
 
@@ -223,15 +244,15 @@ export default function Onboarding({ onFinish, mode = "firstRun" }) {
                                         <div className="flex items-start gap-2">
                                             <Bell className="h-4 w-4 mt-0.5" />
                                             <p className={`text-xs ${muted}`}>
-                                                Tip: se su Android le notifiche fanno le difficili, in Impostazioni trovi guida e pulsante per i permessi.
+                                                Consiglio: se su Android le notifiche fanno le difficili, in Impostazioni trovi guida e pulsante
+                                                per i permessi.
                                             </p>
                                         </div>
                                     </div>
                                 )}
 
-                                <p className={`mt-6 text-center text-xs ${muted}`}>Swipe a sinistra/destra (orizzontale).</p>
+                                <p className={`mt-6 text-center text-xs ${muted}`}>Scorri a sinistra/destra (in orizzontale).</p>
 
-                                {/* spazio per non schiacciare sul footer */}
                                 <div className="h-8" />
                             </div>
                         </div>

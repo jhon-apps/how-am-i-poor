@@ -4,7 +4,7 @@ export const INCOME_CATEGORIES = [
     { key: "entrate_extra", label: "Entrate extra" },
     { key: "bonus", label: "Bonus" },
     { key: "rimborso", label: "Rimborso" },
-    { key: "prestito", label: "Prestito" }, // ✅ NEW (entrate)
+    { key: "prestito", label: "Prestito" },
 ]
 
 // === CATEGORIE USCITE ===

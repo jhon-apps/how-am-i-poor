@@ -78,6 +78,9 @@ export default function Home({ onOpenSettings }) {
     const [leftView, setLeftView] = useState("chart")
     const [chartRange, setChartRange] = useState("30d")
 
+    // saldo toggle (totale vs ultimi 30 giorni)
+    const [balanceScope, setBalanceScope] = useState("total")
+
     // undo
     const [undoOpen, setUndoOpen] = useState(false)
     const [lastDeleted, setLastDeleted] = useState(null)
@@ -100,7 +103,21 @@ export default function Home({ onOpenSettings }) {
     const ThemeIcon = theme === "dark" ? Moon : Sun
 
     const { transactions, isLoading, add, update, remove, restore, totals } = useTransactions()
-    const { income, expenses, balance } = totals
+    const totalIncome = totals.income
+    const totalExpenses = totals.expenses
+    const totalBalance = totals.balance
+
+    const totals30d = useMemo(() => {
+        const tx30 = transactions.filter((t) => isWithinLastDays(t.date, 30))
+        const income = tx30.filter((t) => t.type === "entrata").reduce((s, t) => s + (Number(t.amount) || 0), 0)
+        const expenses = tx30.filter((t) => t.type === "uscita").reduce((s, t) => s + (Number(t.amount) || 0), 0)
+        return { income, expenses, balance: income - expenses }
+    }, [transactions])
+
+    const scopedTotals = useMemo(() => {
+        if (balanceScope === "30d") return totals30d
+        return { income: totalIncome, expenses: totalExpenses, balance: totalBalance }
+    }, [balanceScope, totals30d, totalIncome, totalExpenses, totalBalance])
 
     const hasAny = useMemo(() => transactions.length > 0, [transactions])
 
@@ -131,21 +148,17 @@ export default function Home({ onOpenSettings }) {
         return uniq
     }, [transactions])
 
-    // insight mese corrente
-    const monthKey = useMemo(() => new Date().toISOString().slice(0, 7), [])
-    const monthStats = useMemo(() => {
-        const monthTx = transactions.filter((t) => String(t.date).slice(0, 7) === monthKey)
-        const mi = monthTx.filter((t) => t.type === "entrata").reduce((s, t) => s + (Number(t.amount) || 0), 0)
-        const me = monthTx.filter((t) => t.type === "uscita").reduce((s, t) => s + (Number(t.amount) || 0), 0)
-        return { mi, me, net: mi - me }
-    }, [transactions, monthKey])
+    // insight: segue il toggle saldo
+    const scopeLabel = balanceScope === "30d" ? "ultimi 30 giorni" : "saldo totale"
 
     const insightText = useMemo(() => {
         if (!hasAny) return "Aggiungi 2–3 movimenti e iniziamo a giudicare in silenzio."
-        if (balance < 0) return `Questo mese sei a ${formatEUR(monthStats.net)}. Respira. È solo matematica.`
-        if (balance === 0) return `Equilibrio perfetto: ${formatEUR(0)}. Sospetto.`
-        return `Questo mese sei a ${formatEUR(monthStats.net)}. Continua così (finché dura).`
-    }, [hasAny, balance, monthStats.net])
+
+        const net = Number(scopedTotals.balance) || 0
+        if (net < 0) return `Sei sotto di ${formatEUR(Math.abs(net))} (${scopeLabel}). Complimenti a chi ti sopporta.`
+        if (net === 0) return `Equilibrio perfetto (${scopeLabel}): ${formatEUR(0)}. Sospetto.`
+        return `Sei sopra di ${formatEUR(net)} (${scopeLabel}). Non rovinare tutto domani.`
+    }, [hasAny, scopedTotals.balance, scopeLabel])
 
     // cleanup timer undo
     useEffect(() => {
@@ -369,7 +382,14 @@ export default function Home({ onOpenSettings }) {
                     </div>
                 ) : (
                     <>
-                        <BalanceCard balance={balance} income={income} expenses={expenses} onAdd={(type) => openNewTransaction(type)} />
+                        <BalanceCard
+                            balance={scopedTotals.balance}
+                            income={scopedTotals.income}
+                            expenses={scopedTotals.expenses}
+                            scope={balanceScope}
+                            onScopeChange={setBalanceScope}
+                            onAdd={(type) => openNewTransaction(type)}
+                        />
 
                         {/* Insight */}
                         <div className={`${surface} p-4 md:p-5`}>
@@ -389,8 +409,9 @@ export default function Home({ onOpenSettings }) {
 
                                     {hasAny && (
                                         <p className={`mt-2 text-xs ${muted}`}>
-                                            Mese corrente: entrate {formatEUR(monthStats.mi)} • uscite {formatEUR(monthStats.me)} • netto{" "}
-                                            <span className="font-semibold">{formatEUR(monthStats.net)}</span>
+                                            {balanceScope === "30d" ? "Ultimi 30 giorni" : "Totale"}: entrate {formatEUR(scopedTotals.income)} • uscite{" "}
+                                            {formatEUR(scopedTotals.expenses)} • netto{" "}
+                                            <span className="font-semibold">{formatEUR(scopedTotals.balance)}</span>
                                         </p>
                                     )}
                                 </div>

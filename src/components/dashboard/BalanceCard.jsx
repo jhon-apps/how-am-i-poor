@@ -1,6 +1,13 @@
 import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react"
 
-export default function BalanceCard({ balance = 0, income = 0, expenses = 0, onAdd }) {
+export default function BalanceCard({
+                                        balance = 0,
+                                        income = 0,
+                                        expenses = 0,
+                                        onAdd,
+                                        scope = "total", // "total" | "30d"
+                                        onScopeChange,
+                                    }) {
     const fmt = (n) =>
         new Intl.NumberFormat("it-IT", {
             style: "currency",
@@ -17,6 +24,9 @@ export default function BalanceCard({ balance = 0, income = 0, expenses = 0, onA
     const subCard = "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
     const muted = "text-[rgb(var(--muted-fg))]"
 
+    const isTotal = scope === "total"
+    const label = isTotal ? "Saldo totale" : "Saldo 30 giorni"
+
     return (
         <div className={`rounded-3xl border p-6 shadow-sm ${card}`}>
             {/* HEADER */}
@@ -26,17 +36,47 @@ export default function BalanceCard({ balance = 0, income = 0, expenses = 0, onA
                         <div className={`flex h-9 w-9 items-center justify-center rounded-2xl ${subCard}`}>
                             <Wallet className="h-4 w-4" />
                         </div>
-                        <p className={`text-sm ${muted}`}>Saldo attuale</p>
+                        <p className={`text-sm ${muted}`}>{label}</p>
                     </div>
 
-                    <h2 className="mt-3 text-3xl font-extrabold tracking-tight truncate">
-                        {fmt(balance)}
-                    </h2>
+                    <h2 className="mt-3 text-3xl font-extrabold tracking-tight truncate">{fmt(balance)}</h2>
                 </div>
 
-                <div className="text-right shrink-0">
-                    <p className={`text-xs ${muted}`}>Oggi</p>
-                    <p className="text-sm font-medium">{today}</p>
+                <div className="text-right shrink-0 space-y-2">
+                    <div>
+                        <p className={`text-xs ${muted}`}>Oggi</p>
+                        <p className="text-sm font-medium">{today}</p>
+                    </div>
+
+                    {/* Toggle saldo: Totale / 30 giorni */}
+                    <div className={`inline-flex rounded-2xl border p-1 ${subCard}`}>
+                        <button
+                            type="button"
+                            onClick={() => onScopeChange?.("total")}
+                            className={[
+                                "px-3 py-1.5 text-xs font-semibold rounded-xl transition border",
+                                isTotal
+                                    ? `bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))]`
+                                    : `bg-transparent border-transparent ${muted} hover:bg-[rgb(var(--card))] hover:border-[rgb(var(--border))]`,
+                            ].join(" ")}
+                            aria-pressed={isTotal}
+                        >
+                            Totale
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => onScopeChange?.("30d")}
+                            className={[
+                                "px-3 py-1.5 text-xs font-semibold rounded-xl transition border",
+                                !isTotal
+                                    ? `bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))]`
+                                    : `bg-transparent border-transparent ${muted} hover:bg-[rgb(var(--card))] hover:border-[rgb(var(--border))]`,
+                            ].join(" ")}
+                            aria-pressed={!isTotal}
+                        >
+                            30g
+                        </button>
+                    </div>
                 </div>
             </div>
 
