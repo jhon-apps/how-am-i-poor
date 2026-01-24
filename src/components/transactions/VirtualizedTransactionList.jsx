@@ -10,7 +10,7 @@ export default function VirtualizedTransactionList({
                                                    }) {
     return (
         <Virtuoso
-            style={{ height: "100%" }}                 // ✅ fondamentale
+            style={{ height: "100%" }}
             data={transactions}
             computeItemKey={(index, tx) => tx?.id ?? String(index)}
             increaseViewportBy={{ top: 400, bottom: 800 }}

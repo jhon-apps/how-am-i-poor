@@ -13,7 +13,6 @@ export default function useAppLifecycle() {
 
                 const { App } = await import("@capacitor/app")
 
-                // run once on mount
                 await onAppBecameActive()
 
                 const handler = App.addListener("appStateChange", async (state) => {
@@ -25,7 +24,6 @@ export default function useAppLifecycle() {
 
                 remove = handler
             } catch {
-                // ignore
             }
         })()
 
@@ -34,7 +32,6 @@ export default function useAppLifecycle() {
             try {
                 remove?.remove?.()
             } catch {
-                // ignore
             }
         }
     }, [])

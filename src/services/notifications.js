@@ -102,7 +102,6 @@ async function ensureChannel() {
             lights: true,
         })
     } catch {
-        // ignore
     }
 }
 
@@ -185,7 +184,6 @@ export async function applyNotificationSettings() {
 
     if (!s.notificationsEnabled) {
         await cancelByIds([ID_DAILY, ID_INACTIVITY])
-        // ricorrenti: cancello nel servizio ricorrenti stesso (quando chiamato)
         await scheduleRecurringNotifications()
         return { ok: true, mode: "disabled" }
     }

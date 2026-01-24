@@ -1,6 +1,6 @@
 export default function AdSlot({
                                    isPremium,
-                                   adsConsent = "unknown", // "unknown" | "granted" | "denied"
+                                   adsConsent = "unknown",
                                    placement = "banner",
                                    height = 90,
                                }) {

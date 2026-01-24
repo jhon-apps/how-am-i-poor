@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client"
 import App from "./App.jsx"
 import "./index.css"
 
-const KEY = "how-am-i-poor-theme" // "light" | "dark"
+const KEY = "how-am-i-poor-theme"
 
 function bootstrapTheme() {
     try {
@@ -14,10 +14,8 @@ function bootstrapTheme() {
         html.classList.remove("light", "dark")
         html.classList.add(theme)
 
-        // aiuta form controls / scrollbar / UA styling
         html.style.colorScheme = theme
     } catch {
-        // ignore
     }
 }
 

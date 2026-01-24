@@ -1,11 +1,3 @@
-// src/entities/autoCategory.js
-// Autocategorizzazione semplice + modificabile.
-//
-// Regole:
-// - matching case-insensitive
-// - priorita: la prima regola che matcha vince
-// - puoi aggiungere keyword/merchant quando vuoi
-
 function norm(s) {
   return String(s || "")
     .toLowerCase()
@@ -31,7 +23,6 @@ export function suggestCategory(description, type) {
   const d = norm(description)
   if (!d) return null
 
-  // ✅ Uscite
   if (type === "uscita") {
     const RULES = [
       { category: "cibo", keywords: ["bar", "caffe", "caffè", "ristorante", "pizza", "kebab", "sushi", "glovo", "deliveroo", "just eat", "esselunga", "coop", "conad", "carrefour", "spesa", "supermercato", "McDonald","Burger King","lidl"] },
@@ -50,7 +41,6 @@ export function suggestCategory(description, type) {
     return null
   }
 
-  // ✅ Entrate
   if (type === "entrata") {
     const RULES = [
       { category: "stipendio", keywords: ["stipendio", "salary", "paga", "busta paga"] },

@@ -1,4 +1,4 @@
-import { Lock, Search, Clock3, FileSpreadsheet, BadgeCheck } from "lucide-react"
+import {Lock, Search, Clock3, FileSpreadsheet, BadgeCheck, Clock2} from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 
@@ -46,6 +46,10 @@ export default function PremiumUpsellDialog({ open, onClose, onConfirm, reason =
                     <div className="flex items-center gap-3">
                         <Clock3 className={`h-5 w-5 ${muted}`} />
                         <span>Storico completo (oltre 30 giorni)</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Clock2 className={`h-5 w-5 ${muted}`} />
+                        <span>Movimenti Ricorrenti</span>
                     </div>
                     <div className="flex items-center gap-3">
                         <BadgeCheck className={`h-5 w-5 ${muted}`} />

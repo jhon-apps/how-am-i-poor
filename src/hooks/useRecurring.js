@@ -79,9 +79,7 @@ export default function useRecurring() {
         }
     }, [])
 
-    // ✅ usa la stessa pipeline delle notifiche normali
     const rescheduleAllNotifications = useCallback(() => {
-        // fire-and-forget, non blocca UI
         applyNotificationSettings().catch(() => {})
     }, [])
 
@@ -91,7 +89,6 @@ export default function useRecurring() {
             setItems(normalized)
             writeAll(normalized)
 
-            // ✅ dopo ogni modifica ricorrenti: rischedula subito
             rescheduleAllNotifications()
         },
         [rescheduleAllNotifications]

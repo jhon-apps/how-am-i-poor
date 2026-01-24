@@ -17,7 +17,6 @@ import { applyNotificationSettings, debugTestNotification } from "@/services/not
 import { APP_CONFIG } from "@/config/config"
 import { Repeat } from "lucide-react"
 
-
 const USER_KEY = "howamipoor:user:v1"
 const SETTINGS_KEY = "howamipoor:settings:v1"
 
@@ -175,8 +174,11 @@ export default function Settings({ onBack }) {
 
     return (
         <div className="min-h-screen overflow-x-hidden bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
-            <div className="sticky top-0 z-40 border-b bg-[rgb(var(--card))] border-[rgb(var(--border))]">
-                <div className="pt-[env(safe-area-inset-top)]" />
+            {/* ✅ MODIFICA SOLO HEADER: safe-area top robusto */}
+            <div
+                className="sticky top-0 z-40 border-b bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+                style={{ paddingTop: "max(env(safe-area-inset-top), 24px)" }}
+            >
                 <div className="mx-auto max-w-3xl px-3 py-3 flex items-center gap-3">
                     <button
                         onClick={onBack}
@@ -353,6 +355,7 @@ export default function Settings({ onBack }) {
                         )}
                     </div>
                 </section>
+
                 {/* Ricorrenti */}
                 <section className={`${surface} p-4`}>
                     <div className="flex items-center gap-2">

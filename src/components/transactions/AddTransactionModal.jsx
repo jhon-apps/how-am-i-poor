@@ -69,7 +69,6 @@ export default function AddTransactionModal({
     const [formData, setFormData] = useState(initial.formData)
     const [error, setError] = useState(initial.error)
 
-    // autocategory
     const [manualCategory, setManualCategory] = useState(false)
 
     // getCategoriesByType() ritorna OGGETTI {key,label}; qui lavoriamo sempre con chiavi stringa

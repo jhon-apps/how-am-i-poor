@@ -59,6 +59,26 @@ Puoi lasciarlo vuoto, ma poi non lamentarti se ti chiamo "campione".`,
                 input: true,
             },
             {
+                key: "balance-scope",
+                title: "Saldo: totale o 30 giorni",
+                subtitle: "Stessa verità. Due punti di vista.",
+                icon: Wallet,
+                body: `Il saldo può mostrarti due cose diverse.
+
+                • Totale: tutto quello che hai fatto finora. Sì, anche gli errori lontani.
+                • 30 giorni: solo l’ultimo mese. Per capire come stai andando adesso.
+                
+                In alto trovi un bottone che cambia vista:
+                toccalo e il saldo si aggiorna subito.
+                
+                Solo numeri che cambiano prospettiva.`,
+                                bullets: [
+                    "Un solo bottone, una vista alla volta",
+                    "Saldo e messaggi sempre coerenti",
+                    "Serve a capire se stai migliorando… o no (difficile)",
+                ],
+            },
+            {
                 key: "how",
                 title: "Come si usa",
                 subtitle: "Pochi tocchi. Il resto è autocontrollo (auguri).",
@@ -123,9 +143,9 @@ Traduzione: ${chiamata}, con Premium non hai più scuse. Solo numeri.`,
     const finish = () => {
         markOnboardingDone()
         onFinish?.()
+        window.location.hash = "#/"
     }
 
-    // Scorrimento laterale robusto: ignora lo scorrimento verticale
     const startRef = useRef({ x: 0, y: 0, t: 0 })
     const onTouchStart = (e) => {
         const touch = e.touches?.[0]

@@ -1,6 +1,24 @@
 @import "tailwindcss";
 
+/* =========================================================
+   THEME (deterministico via CSS variables)
+   Vars: --bg --fg --card --card-2 --border --muted --muted-fg
+   Niente dark: tailwind sulle view principali
+   ========================================================= */
+
 @layer base {
+    :root {
+        /* fallback (se html non ha class) */
+        color-scheme: light;
+        --bg: 248 250 252;
+        --fg: 15 23 42;
+        --card: 255 255 255;
+        --card-2: 248 250 252;
+        --border: 226 232 240;
+        --muted: 241 245 249;
+        --muted-fg: 71 85 105;
+    }
+
     html.light {
         color-scheme: light;
         --bg: 248 250 252;
@@ -15,7 +33,7 @@
     html.dark {
         color-scheme: dark;
         --bg: 2 6 23;
-        --fg: 248 250 252;
+        --fg: 226 232 240;
         --card: 15 23 42;
         --card-2: 2 6 23;
         --border: 30 41 59;
@@ -24,31 +42,33 @@
     }
 
     html,
-    body,
-    #root {
+    body {
         height: 100%;
-        width: 100%;
-        overflow-x: hidden;
     }
 
     body {
+        margin: 0;
         background: rgb(var(--bg));
         color: rgb(var(--fg));
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
     }
+}
 
-    :root {
-        --sat: env(safe-area-inset-top);
-        --sar: env(safe-area-inset-right);
-        --sab: env(safe-area-inset-bottom);
-        --sal: env(safe-area-inset-left);
+/* =========================================================
+   SAFE AREA helpers (non impongono padding globale)
+   Le view possono usare env(safe-area-inset-*) dove serve.
+   ========================================================= */
+@layer utilities {
+    .haip-safe-top {
+        padding-top: env(safe-area-inset-top);
     }
-
-    /* Evita tagli notch/nav-bar */
-    .safe-area-padding {
-        padding-top: var(--sat);
-        padding-right: var(--sar);
-        padding-bottom: var(--sab);
-        padding-left: var(--sal);
+    .haip-safe-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
     }
-
+    .haip-safe-x {
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
 }

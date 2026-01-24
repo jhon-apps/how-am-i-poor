@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 import { ArrowLeft, Plus, Repeat, Trash2, Pencil, Lock, X, AlarmClock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import useRecurring from "@/hooks/useRecurring"
@@ -37,7 +37,6 @@ function RecurringForm({ initial, onCancel, onSave }) {
     const [amount, setAmount] = useState(initial?.amount ?? "")
     const [day, setDay] = useState(initial?.schedule?.day ?? 1)
 
-    // ✅ nel tuo progetto: getCategoriesByType ritorna array di {key,label}
     const categoriesForType = useMemo(() => getCategoriesByType(type), [type])
 
     const [category, setCategory] = useState(() => {
@@ -46,7 +45,6 @@ function RecurringForm({ initial, onCancel, onSave }) {
         return getDefaultCategoryByType(type)
     })
 
-    // se cambio tipo, riallinea categoria se non compatibile
     useEffect(() => {
         setCategory((prev) => {
             if (prev && isCategoryAllowedForType(prev, type)) return prev
@@ -54,7 +52,6 @@ function RecurringForm({ initial, onCancel, onSave }) {
         })
     }, [type])
 
-    // notification prefs
     const [notifyEnabled, setNotifyEnabled] = useState(initial?.notify?.enabled ?? true)
     const [notifyTime, setNotifyTime] = useState(initial?.notify?.time ?? "09:00")
     const [daysBefore, setDaysBefore] = useState(initial?.notify?.daysBefore ?? 0)
@@ -68,7 +65,7 @@ function RecurringForm({ initial, onCancel, onSave }) {
             type,
             description: String(description).trim(),
             amount: cleanAmount,
-            category, // ✅ key della categoria
+            category,
             schedule: { freq: "monthly", day: clampDay(day) },
             notify: {
                 enabled: !!notifyEnabled,
@@ -122,7 +119,6 @@ function RecurringForm({ initial, onCancel, onSave }) {
                     />
                 </div>
 
-                {/* ✅ select categorie (key/label) */}
                 <div className={soft + " p-3 space-y-2"}>
                     <label className={`text-xs ${muted}`}>Categoria</label>
                     <select
@@ -160,7 +156,12 @@ function RecurringForm({ initial, onCancel, onSave }) {
                         <p className="text-sm font-semibold">Notifica</p>
                         <p className={`text-xs ${muted}`}>Ti avvisa e apre la modale precompilata.</p>
                     </div>
-                    <input type="checkbox" checked={notifyEnabled} onChange={(e) => setNotifyEnabled(e.target.checked)} className="h-5 w-5" />
+                    <input
+                        type="checkbox"
+                        checked={notifyEnabled}
+                        onChange={(e) => setNotifyEnabled(e.target.checked)}
+                        className="h-5 w-5"
+                    />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -225,7 +226,6 @@ export default function Recurring({ onBack }) {
         localStorage.setItem(INTRO_KEY, JSON.stringify({ seen: true, ts: Date.now() }))
     }
 
-    // premium flow
     const [upsellOpen, setUpsellOpen] = useState(false)
     const [hubOpen, setHubOpen] = useState(false)
     const [billingNotReadyOpen, setBillingNotReadyOpen] = useState(false)
@@ -234,9 +234,12 @@ export default function Recurring({ onBack }) {
     const soft = "rounded-2xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
     const muted = "text-[rgb(var(--muted-fg))]"
 
+    // ✅ HEADER con safe-area top robusta
     const header = (
-        <div className="sticky top-0 z-40 border-b bg-[rgb(var(--card))] border-[rgb(var(--border))]">
-            <div className="pt-[env(safe-area-inset-top)]" />
+        <div
+            className="sticky top-0 z-40 border-b bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+            style={{ paddingTop: "max(env(safe-area-inset-top), 24px)" }}
+        >
             <div className="mx-auto max-w-3xl px-3 py-3 flex items-center gap-3">
                 <button
                     onClick={onBack}
@@ -296,9 +299,10 @@ export default function Recurring({ onBack }) {
 
     if (!isPremium) {
         return (
-            <div className="min-h-screen bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
+            <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
                 {header}
-                <main className="mx-auto max-w-3xl px-3 py-6 space-y-4">
+                {/* ✅ safe-area bottom */}
+                <main className="mx-auto max-w-3xl px-3 py-6 space-y-4 pb-[calc(24px+env(safe-area-inset-bottom))]">
                     {introBanner}
 
                     <div className={`${surface} p-5`}>
@@ -328,10 +332,11 @@ export default function Recurring({ onBack }) {
     }
 
     return (
-        <div className="min-h-screen bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
+        <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
             {header}
 
-            <main className="mx-auto max-w-3xl px-3 py-6 space-y-4">
+            {/* ✅ safe-area bottom */}
+            <main className="mx-auto max-w-3xl px-3 py-6 space-y-4 pb-[calc(24px+env(safe-area-inset-bottom))]">
                 {introBanner}
 
                 <div className={`${surface} p-4 flex items-center justify-between gap-3`}>

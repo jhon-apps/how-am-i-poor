@@ -31,13 +31,11 @@ export default function useNotificationActions() {
                     )
                     window.dispatchEvent(new Event(EVENT))
 
-                    // porta alla home (dove apriremo la modale)
                     window.location.hash = "#/"
                 })
 
                 remove = handler
             } catch {
-                // ignore
             }
         })()
 
@@ -46,7 +44,6 @@ export default function useNotificationActions() {
             try {
                 remove?.remove?.()
             } catch {
-                // ignore
             }
         }
     }, [])

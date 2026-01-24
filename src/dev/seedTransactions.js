@@ -31,7 +31,6 @@ export function seedTransactions(n = 1200, key = "howamipoor:transactions:v1") {
         const description = (isIncome ? pick(descIncome) : pick(descExpense)) + ` #${i + 1}`
         const amount = isIncome ? Math.round(rand(200, 2500) * 100) / 100 : Math.round(rand(2, 160) * 100) / 100
 
-        // 35% <= 30 giorni, 65% oltre 30 (fino a 180)
         const bucket = Math.random()
         const daysAgo = bucket < 0.35 ? Math.floor(rand(0, 30)) : Math.floor(rand(31, 180))
 
@@ -44,11 +43,10 @@ export function seedTransactions(n = 1200, key = "howamipoor:transactions:v1") {
             description,
             amount,
             date,
-            createdAt: now - i, // ✅ tie-breaker stabile
+            createdAt: now - i,
         }
     })
 
-    // sort stabile: date desc, createdAt desc
     rows.sort((a, b) => {
         const da = String(a.date)
         const db = String(b.date)

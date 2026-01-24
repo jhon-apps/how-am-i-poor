@@ -15,13 +15,11 @@ export default function PremiumHub({ open, onClose, onBillingNotReady }) {
     const handleSubscribe = () => {
         const res = requestPremium()
 
-        // DEV: premium attivo
         if (res.ok) {
             onClose?.()
             return
         }
 
-        // PROD: billing required -> chiudi hub e fai aprire al parent il dialog not-ready
         onClose?.()
         setTimeout(() => onBillingNotReady?.(), 0)
     }

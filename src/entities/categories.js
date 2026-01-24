@@ -16,14 +16,12 @@ export const EXPENSE_CATEGORIES = [
     { key: "salute", label: "Salute" },
     { key: "svago", label: "Svago" },
     { key: "shopping", label: "Shopping" },
-    { key: "assicurazione", label: "Assicurazione" }, // ✅ NEW (uscite)
-    { key: "prestito", label: "Prestito" }, // ✅ NEW (uscite)
+    { key: "assicurazione", label: "Assicurazione" },
+    { key: "prestito", label: "Prestito" },
 ]
 
-// fallback SEMPRE disponibile
 export const FALLBACK_CATEGORY = { key: "altro", label: "Altro" }
 
-// lista unica per label lookup / validazioni
 export const ALL_CATEGORIES = [
     ...INCOME_CATEGORIES,
     ...EXPENSE_CATEGORIES,

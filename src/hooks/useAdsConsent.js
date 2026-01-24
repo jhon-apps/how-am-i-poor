@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 
-const KEY = "how-am-i-poor:adsConsent" // "unknown" | "granted" | "denied"
+const KEY = "how-am-i-poor:adsConsent"
 
 export default function useAdsConsent() {
     const [adsConsent, setAdsConsent] = useState(() => {
@@ -12,7 +12,6 @@ export default function useAdsConsent() {
         localStorage.setItem(KEY, adsConsent)
     }, [adsConsent])
 
-    // stub helpers (in futuro li collegheremo a UMP)
     const grantConsent = () => setAdsConsent("granted")
     const denyConsent = () => setAdsConsent("denied")
     const resetConsent = () => setAdsConsent("unknown")

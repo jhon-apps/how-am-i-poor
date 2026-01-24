@@ -4,7 +4,6 @@ import { APP_CONFIG } from "@/config/config"
 export const PREMIUM_KEY = "howamipoor:premium:v1"
 const PREMIUM_EVENT = "haip:premium:changed"
 
-// source è la verità: none/dev/billing
 const DEFAULT_STATE = { source: "none", updatedAt: 0 }
 
 function normalizeSource(x) {
@@ -18,7 +17,6 @@ function readState() {
 
         const p = JSON.parse(raw)
 
-        // compat: vecchio formato {active:boolean}
         if (typeof p?.active === "boolean") {
             const source = p.active ? normalizeSource(p.source || "dev") : "none"
             return { source, updatedAt: Number(p.updatedAt || 0) }
@@ -44,11 +42,9 @@ function writeState(source) {
 }
 
 function broadcastPremiumChange() {
-    // ✅ same-tab sync (storage non scatta nello stesso tab)
     try {
         window.dispatchEvent(new Event(PREMIUM_EVENT))
     } catch {
-        // ignore
     }
 }
 
@@ -60,12 +56,10 @@ export default function usePremium() {
     }, [])
 
     useEffect(() => {
-        // ✅ cross-tab sync
         const onStorage = (e) => {
             if (e.key === PREMIUM_KEY) refresh()
         }
 
-        // ✅ same-tab sync
         const onPremiumChanged = () => refresh()
 
         window.addEventListener("storage", onStorage)

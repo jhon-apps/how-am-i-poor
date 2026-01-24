@@ -57,7 +57,15 @@ function isWithinLastDays(dateISO, days) {
     return diff <= days * 24 * 60 * 60 * 1000
 }
 
-export default function Home({ onOpenSettings }) {
+function calcTotals(list) {
+    const income = list.filter((t) => t.type === "entrata").reduce((s, t) => s + (Number(t.amount) || 0), 0)
+    const expenses = list.filter((t) => t.type === "uscita").reduce((s, t) => s + (Number(t.amount) || 0), 0)
+    return { income, expenses, balance: income - expenses }
+}
+
+
+export default function Home({ onOpenSettings, registerCloseNewTxModal }) {
+
     // add/edit modal
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingTx, setEditingTx] = useState(null)
@@ -95,7 +103,19 @@ export default function Home({ onOpenSettings }) {
     const ThemeIcon = theme === "dark" ? Moon : Sun
 
     const { transactions, isLoading, add, update, remove, restore, totals } = useTransactions()
-    const { income, expenses, balance } = totals
+    const { balance } = totals
+
+    const [balanceScope, setBalanceScope] = useState("total") // "total" | "30d"
+
+    const totals30d = useMemo(() => {
+        const last30 = transactions.filter((t) => isWithinLastDays(t.date, 30))
+        return calcTotals(last30)
+    }, [transactions])
+
+    const scopedTotals = balanceScope === "30d"
+        ? totals30d
+        : { income: totals.income, expenses: totals.expenses, balance: totals.balance }
+
 
     const hasAny = useMemo(() => transactions.length > 0, [transactions])
 
@@ -137,10 +157,30 @@ export default function Home({ onOpenSettings }) {
 
     const insightText = useMemo(() => {
         if (!hasAny) return "Aggiungi 2–3 movimenti e iniziamo a giudicare in silenzio."
-        if (monthStats.net < 0) return `Questo mese sei a ${formatEUR(monthStats.net)}. Respira. È solo matematica.`
-        if (monthStats.net === 0) return `Equilibrio perfetto: ${formatEUR(0)}. Sospetto.`
-        return `Questo mese sei a ${formatEUR(monthStats.net)}. Continua così (finché dura).`
-    }, [hasAny, monthStats.net])
+        const v = scopedTotals.balance
+        if (v < 0) return `In ${balanceScope === "30d" ? "30 giorni" : "totale"} sei a ${formatEUR(v)}. Respira. È solo matematica.`
+        if (v === 0) return `In ${balanceScope === "30d" ? "30 giorni" : "totale"} sei perfettamente a ${formatEUR(0)}. Sospetto.`
+        return `In ${balanceScope === "30d" ? "30 giorni" : "totale"} sei a ${formatEUR(v)}. Continua così (finché dura).`
+    }, [hasAny, scopedTotals.balance, balanceScope])
+
+    useEffect(() => {
+        if (!registerCloseNewTxModal) return
+
+        if (!isModalOpen) {
+            registerCloseNewTxModal(null)
+            return
+        }
+
+        // quando la modale è aperta, esponi una funzione per chiuderla via back Android
+        registerCloseNewTxModal(() => {
+            setIsModalOpen(false)
+            setEditingTx(null)
+            setPrefill(null)
+        })
+
+        return () => registerCloseNewTxModal(null)
+    }, [isModalOpen, registerCloseNewTxModal])
+
 
     // cleanup timer undo
     useEffect(() => {
@@ -261,29 +301,81 @@ export default function Home({ onOpenSettings }) {
     return (
         <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
             {/* Header */}
-            <div
+            <header
                 className={[
                     "sticky top-0 z-20 transition-transform duration-200",
                     showHeader ? "translate-y-0" : "-translate-y-full",
                     "bg-[rgb(var(--bg))]/80 backdrop-blur-xl",
                 ].join(" ")}
+                style={{ paddingTop: "max(env(safe-area-inset-top), 24px)" }}
             >
-                <div className="pt-[env(safe-area-inset-top)]" />
+                {/* glow premium (ogni 3s) */}
+                <style>{`
+    @keyframes haipPremiumGlow {
+      0%, 72% {
+        box-shadow: 0 0 0 rgba(0,0,0,0);
+        transform: translateZ(0);
+      }
+      78% {
+        box-shadow: 0 0 0 rgba(0,0,0,0);
+      }
+      84% {
+        box-shadow:
+          0 0 0 1px rgba(234,179,8,0.55),
+          0 0 22px rgba(234,179,8,0.35),
+          0 0 44px rgba(234,179,8,0.18);
+      }
+      92% {
+        box-shadow:
+          0 0 0 1px rgba(234,179,8,0.35),
+          0 0 14px rgba(234,179,8,0.22),
+          0 0 28px rgba(234,179,8,0.10);
+      }
+      100% {
+        box-shadow: 0 0 0 rgba(0,0,0,0);
+      }
+    }
+    .haip-premium-glow {
+      animation: haipPremiumGlow 3s ease-in-out infinite;
+      will-change: box-shadow;
+    }
+  `}</style>
+
                 <div className="px-4 py-4 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                        <h1 className="text-lg font-extrabold tracking-tight">HOW AM I POOR</h1>
-                        <p className={`text-xs ${muted}`}>I miei conti • local storage • giudizio quotidiano</p>
+                        {/* Desktop */}
+                        <h1 className="hidden sm:block text-lg font-extrabold tracking-tight">
+                            HOW AM I POOR
+                        </h1>
+
+                        {/* Mobile */}
+                        <h1 className="block sm:hidden text-lg font-extrabold tracking-tight">
+                            HAIP
+                        </h1>
+
+                        <p className="text-xs text-[rgb(var(--muted-fg))]">
+                            I miei conti
+                        </p>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                         <button
                             type="button"
-                            className="h-10 px-3 rounded-2xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] text-sm font-semibold hover:bg-[rgb(var(--card-2))]"
+                            className="
+                            haip-premium-glow
+                            h-10 px-3 rounded-2xl border
+                            bg-[rgb(var(--card))]
+                            border-[rgba(234,179,8,0.55)]
+                            text-sm font-extrabold
+                            text-amber-400
+                            hover:bg-[rgb(var(--card-2))]
+  "
                             onClick={() => openPremium("premium")}
                             title="Premium"
                         >
                             Premium
                         </button>
+
 
                         <button
                             type="button"
@@ -304,11 +396,20 @@ export default function Home({ onOpenSettings }) {
                         </button>
                     </div>
                 </div>
-            </div>
+            </header>
 
             <main className="px-4 pb-10 pt-2">
                 <div className="max-w-6xl mx-auto">
-                    <BalanceCard />
+                    <BalanceCard
+                        balance={scopedTotals.balance}
+                        income={scopedTotals.income}
+                        expenses={scopedTotals.expenses}
+                        scope={balanceScope}
+                        onScopeChange={setBalanceScope}
+                        onAddIncome={() => openNewTransaction("entrata")}
+                        onAddExpense={() => openNewTransaction("uscita")}
+                    />
+
 
                     <div className="mt-3 rounded-3xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] p-5">
                         <div className="flex items-center justify-between gap-4">
@@ -316,14 +417,13 @@ export default function Home({ onOpenSettings }) {
                                 <p className="text-sm font-extrabold tracking-tight">😈 Verdetto del giorno</p>
                                 <p className={`mt-1 text-sm ${muted}`}>{insightText}</p>
                             </div>
-                            <Button variant="outline" className="shrink-0" onClick={() => openNewTransaction("uscita")}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Nuovo
-                            </Button>
                         </div>
                     </div>
 
-                    <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-top" />
+                    <div className="mt-5">
+                        <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-top" />
+                    </div>
+
 
                     {isLoading ? (
                         <div className={`mt-6 text-sm ${muted}`}>Carico i tuoi rimpianti…</div>
@@ -349,7 +449,7 @@ export default function Home({ onOpenSettings }) {
                                                         : "bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]",
                                                 ].join(" ")}
                                             >
-                                                Elenco
+                                                Grafico
                                             </button>
 
                                             <button
@@ -362,7 +462,7 @@ export default function Home({ onOpenSettings }) {
                                                         : "bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]",
                                                 ].join(" ")}
                                             >
-                                                Distribuzione
+                                                Elenco
                                             </button>
                                         </div>
                                     </div>
@@ -512,7 +612,10 @@ export default function Home({ onOpenSettings }) {
                                 </div>
                             </div>
 
-                            <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-bottom" />
+                            <div className="mt-8">
+                                <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="home-bottom" />
+                            </div>
+
 
                             <footer className={`mt-10 text-center text-xs ${muted}`}>
                                 <a

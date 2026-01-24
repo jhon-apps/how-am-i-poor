@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 
-const KEY = "how-am-i-poor-theme" // "light" | "dark"
+const KEY = "how-am-i-poor-theme"
 
 function readTheme() {
     const v = localStorage.getItem(KEY)

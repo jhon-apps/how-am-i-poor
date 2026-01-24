@@ -3,11 +3,6 @@ import { Slot } from "@radix-ui/react-slot"
 import { cva } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
-// Design system:
-// - default: sempre con bordo visibile (anche in dark)
-// - outline: già bordato
-// - secondary: soft
-// - ghost/link: senza border
 const buttonVariants = cva(
     [
         "inline-flex items-center justify-center gap-2",

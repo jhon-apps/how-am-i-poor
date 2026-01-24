@@ -24,11 +24,8 @@ function normalizeTx(tx) {
 }
 
 function sortTx(a, b) {
-    // date desc
     if (a.date !== b.date) return a.date < b.date ? 1 : -1
-    // createdAt desc
     if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1
-    // id desc (stable fallback)
     return a.id < b.id ? 1 : -1
 }
 
@@ -41,7 +38,6 @@ function readAll() {
 
 function writeAll(list) {
     localStorage.setItem(KEY, JSON.stringify(list))
-    // same-tab sync helper (storage event non scatta nello stesso tab)
     window.dispatchEvent(new Event("haip:transactions:changed"))
 }
 
