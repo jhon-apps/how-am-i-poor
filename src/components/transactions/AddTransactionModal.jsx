@@ -10,6 +10,10 @@ import {
 } from "@/entities/categories"
 import { suggestCategory } from "@/entities/autoCategory"
 
+import AdSlot from "@/components/ads/AdSlot"
+import usePremium from "@/hooks/usePremium"
+import useAdsConsent from "@/hooks/useAdsConsent"
+
 const today = () => new Date().toISOString().split("T")[0]
 
 function buildInitialState({ transaction, prefill, defaultType }) {
@@ -60,6 +64,9 @@ export default function AddTransactionModal({
                                                 defaultType = "uscita",
                                                 prefill = null,
                                             }) {
+    const { isPremium } = usePremium()
+    const { adsConsent } = useAdsConsent()
+
     const initial = useMemo(
         () => buildInitialState({ transaction, prefill, defaultType }),
         [transaction, prefill, defaultType]
@@ -272,6 +279,17 @@ export default function AddTransactionModal({
                             {error}
                         </div>
                     )}
+
+                    {/* ✅ ADS non invadente in fondo alla modale */}
+                    <div className="pt-2">
+                        <div className="min-h-[72px]">
+                            <AdSlot
+                                isPremium={isPremium}
+                                adsConsent={adsConsent}
+                                placement="modal-new-transaction-bottom"
+                            />
+                        </div>
+                    </div>
 
                     <div className="flex gap-2 pt-1">
                         <Button type="button" variant="outline" className="flex-1" onClick={onClose}>

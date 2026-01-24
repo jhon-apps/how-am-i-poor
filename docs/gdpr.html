@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="it">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HAIP — Informativa GDPR</title>
+    <meta name="description" content="Informativa GDPR per HAIP — How Am I Poor (JhonApps)." />
+    <style>
+        :root {
+            --bg: #0b1220;
+            --card: #0f1a2e;
+            --text: #e7eefc;
+            --muted: #b6c2de;
+            --border: rgba(255,255,255,0.12);
+            --accent: #f59e0b;
+            --ok: #10b981;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: radial-gradient(1200px 800px at 20% -10%, rgba(245,158,11,0.15), transparent 55%),
+            radial-gradient(900px 700px at 110% 0%, rgba(59,130,246,0.10), transparent 60%),
+            var(--bg);
+            color: var(--text);
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            line-height: 1.5;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .wrap { max-width: 920px; margin: 0 auto; padding: 32px 16px 64px; }
+        .top {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; margin-bottom: 16px;
+        }
+        .brand { font-weight: 900; letter-spacing: -0.02em; }
+        .badge {
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.04);
+            padding: 6px 10px;
+            border-radius: 999px;
+            color: var(--muted);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .hero {
+            border: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03));
+            border-radius: 24px;
+            padding: 22px 18px;
+            margin: 16px 0 18px;
+        }
+        h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: -0.02em; }
+        .sub { color: var(--muted); margin: 0; font-size: 14px; }
+        .card {
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            border-radius: 20px;
+            padding: 18px;
+            margin: 14px 0;
+        }
+        h2 { margin: 0 0 10px; font-size: 16px; letter-spacing: -0.01em; }
+        p, li { color: var(--muted); font-size: 14px; }
+        ul { margin: 10px 0 0; padding-left: 18px; }
+        .grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+        @media (min-width: 860px) {
+            .grid { grid-template-columns: 1fr 1fr; }
+        }
+        .ok {
+            display: inline-flex; align-items: center; gap: 8px;
+            color: var(--text);
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--ok); box-shadow: 0 0 0 3px rgba(16,185,129,0.14); }
+        .footer { margin-top: 22px; color: var(--muted); font-size: 12px; }
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 12px;
+            color: var(--text);
+            background: rgba(0,0,0,0.25);
+            padding: 2px 6px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.10);
+        }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+        .small { font-size: 12px; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="top">
+        <div class="brand">JhonApps · HAIP</div>
+        <div class="badge">Informativa GDPR</div>
+    </div>
+
+    <div class="hero">
+        <h1>Informativa GDPR — HAIP (How Am I Poor)</h1>
+        <p class="sub">
+            Questa pagina spiega come HAIP tratta i dati personali in conformità al Regolamento (UE) 2016/679 (GDPR).
+        </p>
+        <div class="ok"><span class="dot"></span><span><strong>Local-first:</strong> i tuoi dati restano sul tuo dispositivo.</span></div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h2>1) Titolare del trattamento</h2>
+            <p>
+                <strong>JhonApps</strong> (progetto indipendente).<br />
+                Contatti: <span class="mono">jhon-apps.github.io</span> (canale informativo).<br />
+                Nota: HAIP non richiede account e non raccoglie dati su server propri.
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>2) Dati trattati</h2>
+            <p>
+                HAIP salva localmente sul dispositivo i dati inseriti dall’utente (es. movimenti, categorie, ricorrenti, impostazioni).
+                Esempi di chiavi locali:
+            </p>
+            <ul>
+                <li><code>howamipoor:transactions:v1</code></li>
+                <li><code>howamipoor:recurring:v1</code></li>
+                <li><code>howamipoor:settings:v1</code></li>
+                <li><code>howamipoor:user:v1</code></li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>3) Finalità e base giuridica</h2>
+            <p>
+                I dati sono trattati esclusivamente per fornire le funzionalità dell’app (gestione spese, grafici, notifiche).
+                Base giuridica: <strong>esecuzione del servizio</strong> richiesto dall’utente (art. 6(1)(b) GDPR) e, dove applicabile,
+                <strong>consenso</strong> per eventuali tecnologie di terze parti (es. pubblicità) (art. 6(1)(a) GDPR).
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>4) Conservazione dei dati</h2>
+            <p>
+                I dati restano sul dispositivo finché l’utente non li elimina o disinstalla l’app.
+                HAIP non esegue backup su server propri.
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>5) Condivisione e trasferimenti</h2>
+            <p>
+                HAIP non invia i tuoi movimenti a server di JhonApps.
+                Se l’app mostra annunci, i fornitori pubblicitari possono trattare dati tecnici secondo le loro policy.
+                In quel caso, l’utente può gestire il consenso dall’app (dove previsto).
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>6) Diritti dell’interessato</h2>
+            <p>
+                Hai diritto di:
+            </p>
+            <ul>
+                <li>Accedere ai dati</li>
+                <li>Rettificare o cancellare i dati</li>
+                <li>Limitare o opporti al trattamento (nei casi previsti)</li>
+                <li>Portabilità (nei limiti applicabili)</li>
+                <li>Revocare il consenso (se usato)</li>
+                <li>Presentare reclamo al Garante Privacy</li>
+            </ul>
+            <p class="small">
+                In HAIP, molti diritti si esercitano direttamente: modifica/cancella movimenti e impostazioni oppure disinstalla l’app.
+            </p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>7) Notifiche</h2>
+        <p>
+            Le notifiche sono gestite localmente tramite il sistema operativo (Android).
+            Puoi disattivarle in app o dalle impostazioni del dispositivo.
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>8) Sicurezza</h2>
+        <p>
+            HAIP adotta un approccio “local-first” e riduce al minimo i dati trattati.
+            La sicurezza dipende anche dalla protezione del dispositivo (PIN, biometria, ecc.).
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>9) Aggiornamenti di questa informativa</h2>
+        <p>
+            Potremmo aggiornare questa pagina in caso di modifiche dell’app o di requisiti legali.
+            La data di ultimo aggiornamento è indicata sotto.
+        </p>
+    </div>
+
+    <div class="footer">
+        Ultimo aggiornamento: <strong>2026-01-24</strong> ·
+        <a href="./privacy.html">Privacy Policy</a>
+    </div>
+</div>
+</body>
+</html>

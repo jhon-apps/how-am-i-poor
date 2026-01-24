@@ -6,6 +6,13 @@ import Recurring from "@/pages/Recurring"
 import useAppLifecycle from "@/hooks/useAppLifecycle"
 import useNotificationActions from "@/hooks/useNotificationActions"
 
+import Insights from "@/pages/Insights"
+import Premium from "@/pages/Premium"
+import Profile from "@/pages/Profile"
+import Notifications from "@/pages/Notifications"
+import Tutorial from "@/pages/Tutorial"
+import About from "@/pages/About"
+
 const ONBOARDING_KEY = "howamipoor:onboardingDone:v1"
 
 function readOnboardingDone() {
@@ -36,6 +43,14 @@ function getRouteFromHash() {
     if (h.startsWith("#/settings")) return "settings"
     if (h.startsWith("#/onboarding")) return "onboarding"
     if (h.startsWith("#/recurring")) return "recurring"
+
+    if (h.startsWith("#/insights")) return "insights"
+    if (h.startsWith("#/premium")) return "premium"
+    if (h.startsWith("#/profile")) return "profile"
+    if (h.startsWith("#/notifications")) return "notifications"
+    if (h.startsWith("#/tutorial")) return "tutorial"
+    if (h.startsWith("#/about")) return "about"
+
     return "home"
 }
 
@@ -88,22 +103,24 @@ export default function App() {
                 AppPlugin = app.App
 
                 const sub = AppPlugin.addListener("backButton", () => {
-                    if (typeof homeCloseNewTxModalRef.current === "function") {
+                    // 1) chiudi modale SOLO se siamo in Home
+                    if (route === "home" && typeof homeCloseNewTxModalRef.current === "function") {
                         homeCloseNewTxModalRef.current()
                         return
                     }
 
-                    // 2) se non siamo in Home, torna a Home (logico)
+                    // 2) qualsiasi pagina ≠ home → torna home
                     if (route !== "home") {
                         nav("/", { replace: true })
                         return
                     }
 
+                    // 3) siamo in home: doppio back → minimize
                     if (backArmedRef.current) {
                         try {
                             AppPlugin.minimizeApp()
                         } catch {
-                            // fallback: nulla
+                            // ignore
                         }
                         return
                     }
@@ -117,6 +134,7 @@ export default function App() {
 
                 remove = () => sub.remove()
             } catch {
+                // ignore
             }
         }
 
@@ -144,17 +162,18 @@ export default function App() {
             )
         }
 
-        if (route === "recurring") {
-            return <Recurring onBack={() => nav("/", { replace: true })} />
-        }
+        if (route === "recurring") return <Recurring onBack={() => nav("/", { replace: true })} />
+        if (route === "settings") return <Settings onBack={() => nav("/", { replace: true })} />
 
-        if (route === "settings") {
-            return <Settings onBack={() => nav("/", { replace: true })} />
-        }
+        if (route === "insights") return <Insights />
+        if (route === "premium") return <Premium />
+        if (route === "profile") return <Profile />
+        if (route === "notifications") return <Notifications />
+        if (route === "tutorial") return <Tutorial />
+        if (route === "about") return <About />
 
         return (
             <Home
-                onOpenSettings={() => nav("/settings", { replace: false })}
                 registerCloseNewTxModal={(fn) => {
                     homeCloseNewTxModalRef.current = typeof fn === "function" ? fn : null
                 }}
