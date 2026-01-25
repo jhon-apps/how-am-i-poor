@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from "framer-motion"
 import { Menu, X, Moon, Sun } from "lucide-react"
 import useTheme from "@/hooks/useTheme"
 
+const PREMIUM_EVENT = "haip:openPremium"
+
 function MenuItem({ label, onClick }) {
     return (
         <button
@@ -16,9 +18,8 @@ function MenuItem({ label, onClick }) {
 }
 
 /**
- * FIX: top bar fixed + spacer
- * - sticky può rompersi se un parent ha overflow/transform
- * - fixed non si rompe mai e rende la nav coerente su tutte le pagine
+ * GlobalTopBar = topbar coerente su tutte le pagine.
+ * Premium: apre modale via evento globale (o handler locale via prop onPremium).
  */
 export default function GlobalTopBar({ page = "Home", onPremium }) {
     const [menuOpen, setMenuOpen] = useState(false)
@@ -31,18 +32,18 @@ export default function GlobalTopBar({ page = "Home", onPremium }) {
     }
 
     const handlePremium = () => {
+        // 1) handler locale (se passato)
         if (typeof onPremium === "function") return onPremium()
-        window.location.hash = "#/premium"
+
+        // 2) fallback globale: evento → le pages aprono la modale premium
+        window.dispatchEvent(new CustomEvent(PREMIUM_EVENT, { detail: { reason: "premium" } }))
     }
 
-    // Altezza “pratica” della barra (paddingTop + contenuto)
-    // paddingTop: max(safe-area, 24px)
-    // body: circa 64px (py-4 + 2 righe testo)
     const spacerStyle = { height: "calc(max(env(safe-area-inset-top), 24px) + 64px)" }
 
     return (
         <>
-            {/* Spacer: evita che il contenuto finisca sotto la top bar */}
+            {/* Spacer: evita che il contenuto finisca sotto la topbar fixed */}
             <div aria-hidden="true" style={spacerStyle} />
 
             {/* Drawer */}
@@ -82,7 +83,13 @@ export default function GlobalTopBar({ page = "Home", onPremium }) {
                             </div>
 
                             <nav className="px-2 space-y-1">
-                                <MenuItem label="Premium" onClick={() => go("#/premium")} />
+                                <MenuItem
+                                    label="Premium"
+                                    onClick={() => {
+                                        setMenuOpen(false)
+                                        handlePremium()
+                                    }}
+                                />
                                 <MenuItem label="Home" onClick={() => go("#/")} />
                                 <MenuItem label="Grafici e movimenti" onClick={() => go("#/insights")} />
                                 <MenuItem label="Ricorrenti" onClick={() => go("#/recurring")} />
@@ -113,13 +120,13 @@ export default function GlobalTopBar({ page = "Home", onPremium }) {
                         <button
                             type="button"
                             className="
-                h-10 px-3 rounded-2xl border
-                bg-[rgb(var(--card))]
-                border-[rgba(234,179,8,0.55)]
-                text-sm font-extrabold
-                text-amber-400
-                hover:bg-[rgb(var(--card-2))]
-              "
+                                h-10 px-3 rounded-2xl border
+                                bg-[rgb(var(--card))]
+                                border-[rgba(234,179,8,0.55)]
+                                text-sm font-extrabold
+                                text-amber-400
+                                hover:bg-[rgb(var(--card-2))]
+                            "
                             onClick={handlePremium}
                             title="Premium"
                         >
@@ -149,3 +156,4 @@ export default function GlobalTopBar({ page = "Home", onPremium }) {
         </>
     )
 }
+c

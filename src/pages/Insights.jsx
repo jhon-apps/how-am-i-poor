@@ -19,6 +19,8 @@ import useAdsConsent from "@/hooks/useAdsConsent"
 import { isLockedTransaction, canSearchTransactions, canUseAllRange } from "@/entities/premium"
 import GlobalTopBar from "@/components/layout/GlobalTopBar"
 
+const PREMIUM_EVENT = "haip:openPremium"
+
 function isWithinLastDays(dateISO, days) {
     const d = new Date(dateISO)
     if (Number.isNaN(d.getTime())) return false
@@ -72,6 +74,17 @@ export default function Insights() {
             if (undoTimer) clearTimeout(undoTimer)
         }
     }, [undoTimer])
+
+    // ✅ ascolta premium click dalla topbar/menu (evento globale)
+    useEffect(() => {
+        const onPremium = (e) => {
+            const reason = e?.detail?.reason || "premium"
+            setPremiumReason(reason)
+            setPremiumUpsellOpen(true)
+        }
+        window.addEventListener(PREMIUM_EVENT, onPremium)
+        return () => window.removeEventListener(PREMIUM_EVENT, onPremium)
+    }, [])
 
     const openPremium = (reason) => {
         setPremiumReason(reason || "premium")
@@ -158,7 +171,6 @@ export default function Insights() {
             <main className="px-4 pb-10 pt-2">
                 <div className="max-w-6xl mx-auto space-y-4">
                     <div className="grid gap-3 rounded-3xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] p-4">
-                        {/* ✅ ADS qui, non sopra la topbar */}
                         <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="insights-top" />
 
                         <div className="flex items-center justify-between gap-2">

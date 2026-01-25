@@ -1,7 +1,5 @@
-import { useMemo, useState, useEffect, useRef } from "react"
-import { AnimatePresence, motion } from "framer-motion"
-import { Plus, Lock, Moon, Sun, Menu, X, Repeat } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useMemo, useState, useEffect } from "react"
+import { Lock } from "lucide-react"
 
 import BalanceCard from "@/components/dashboard/BalanceCard"
 import AddTransactionModal from "@/components/transactions/AddTransactionModal"
@@ -13,10 +11,11 @@ import BillingNotReadyDialog from "@/components/ui/BillingNotReadyDialog"
 import PremiumHub from "@/components/premium/PremiumHub"
 import AdSlot from "@/components/ads/AdSlot"
 
+import GlobalTopBar from "@/components/layout/GlobalTopBar"
+
 import useTransactions from "@/hooks/useTransactions"
 import usePremium from "@/hooks/usePremium"
 import useAdsConsent from "@/hooks/useAdsConsent"
-import useTheme from "@/hooks/useTheme"
 
 const PENDING_KEY = "howamipoor:pendingAction:v1"
 const PENDING_EVENT = "haip:pendingAction"
@@ -59,39 +58,9 @@ function calcTotals(list) {
     return { income, expenses, balance: income - expenses }
 }
 
-function MenuItem({ label, onClick }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className="w-full text-left px-4 py-3 rounded-2xl hover:bg-[rgb(var(--card-2))] active:scale-[0.99]"
-        >
-            <span className="text-sm font-semibold">{label}</span>
-        </button>
-    )
-}
-
 export default function Home({ registerCloseNewTxModal }) {
-    const [menuOpen, setMenuOpen] = useState(false)
-
-    const [isModalOpen, setIsModalOpen] = useState(false)
-    const [editingTx, setEditingTx] = useState(null)
-    const [createType, setCreateType] = useState("uscita")
-    const [prefill, setPrefill] = useState(null)
-
-    const [undoOpen, setUndoOpen] = useState(false)
-    const [lastDeleted, setLastDeleted] = useState(null)
-    const [undoTimer, setUndoTimer] = useState(null)
-
-    const [premiumUpsellOpen, setPremiumUpsellOpen] = useState(false)
-    const [premiumReason, setPremiumReason] = useState("premium")
-    const [premiumHubOpen, setPremiumHubOpen] = useState(false)
-    const [billingNotReadyOpen, setBillingNotReadyOpen] = useState(false)
-
     const { isPremium } = usePremium()
     const { adsConsent } = useAdsConsent()
-    const { theme, toggleTheme } = useTheme()
-    const ThemeIcon = theme === "dark" ? Moon : Sun
 
     const { transactions, isLoading, add, update, totals } = useTransactions()
 
@@ -109,6 +78,34 @@ export default function Home({ registerCloseNewTxModal }) {
 
     const hasAny = useMemo(() => transactions.length > 0, [transactions])
 
+    // modal add/edit
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [editingTx, setEditingTx] = useState(null)
+    const [createType, setCreateType] = useState("uscita")
+    const [prefill, setPrefill] = useState(null)
+
+    // premium flows
+    const [premiumUpsellOpen, setPremiumUpsellOpen] = useState(false)
+    const [premiumReason, setPremiumReason] = useState("premium")
+    const [premiumHubOpen, setPremiumHubOpen] = useState(false)
+    const [billingNotReadyOpen, setBillingNotReadyOpen] = useState(false)
+
+    // (Home non elimina, quindi undo toast resta spento ma non lo tolgo per compatibilità)
+    const [undoOpen, setUndoOpen] = useState(false)
+
+    const openPremium = (reason) => {
+        setPremiumReason(reason || "premium")
+        setPremiumUpsellOpen(true)
+    }
+
+    const openNewTransaction = (type) => {
+        setEditingTx(null)
+        setCreateType(type || "uscita")
+        setPrefill(null)
+        setIsModalOpen(true)
+    }
+
+    // recent categories per modal
     const recentCategories = useMemo(() => {
         const uniq = []
         for (const t of transactions) {
@@ -120,6 +117,7 @@ export default function Home({ registerCloseNewTxModal }) {
         return uniq
     }, [transactions])
 
+    // back Android: chiudi modale se aperta
     useEffect(() => {
         if (!registerCloseNewTxModal) return
 
@@ -137,25 +135,7 @@ export default function Home({ registerCloseNewTxModal }) {
         return () => registerCloseNewTxModal(null)
     }, [isModalOpen, registerCloseNewTxModal])
 
-    useEffect(() => {
-        return () => {
-            if (undoTimer) clearTimeout(undoTimer)
-        }
-    }, [undoTimer])
-
-    const openPremium = (reason) => {
-        setPremiumReason(reason || "premium")
-        setPremiumUpsellOpen(true)
-    }
-
-    const openNewTransaction = (type) => {
-        setEditingTx(null)
-        setCreateType(type || "uscita")
-        setPrefill(null)
-        setIsModalOpen(true)
-    }
-
-    // ✅ Pending action da notifica ricorrente → modale precompilata
+    // pending action da notifica ricorrente → apre modale prefill
     useEffect(() => {
         const run = () => {
             const p = consumePendingAction()
@@ -195,150 +175,8 @@ export default function Home({ registerCloseNewTxModal }) {
 
     return (
         <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
-            {/* Drawer menu */}
-            <AnimatePresence>
-                {menuOpen ? (
-                    <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <div className="absolute inset-0 bg-black/60" onClick={() => setMenuOpen(false)} />
-
-                        <motion.div
-                            className="absolute left-0 top-0 h-full w-[82%] max-w-sm bg-[rgb(var(--bg))] border-r border-[rgb(var(--border))] shadow-2xl"
-                            initial={{ x: -24, opacity: 0 }}
-                            animate={{ x: 0, opacity: 1 }}
-                            exit={{ x: -24, opacity: 0 }}
-                            transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                        >
-                            <div style={{ paddingTop: "max(env(safe-area-inset-top), 24px)" }} />
-
-                            <div className="flex items-center justify-between px-4 py-4">
-                                <div>
-                                    <p className="text-xs text-[rgb(var(--muted-fg))]">HAIP</p>
-                                    <p className="text-base font-extrabold tracking-tight">Menu</p>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    className="h-10 w-10 rounded-2xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] flex items-center justify-center hover:bg-[rgb(var(--card-2))]"
-                                    onClick={() => setMenuOpen(false)}
-                                    title="Chiudi"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            </div>
-
-                            <nav className="px-2 space-y-1">
-                                <MenuItem
-                                    label="Premium"
-                                    onClick={() => {
-                                        setMenuOpen(false)
-                                        window.location.hash = "#/premium"
-                                    }}
-                                />
-                                <MenuItem
-                                    label="Home"
-                                    onClick={() => {
-                                        setMenuOpen(false)
-                                        window.location.hash = "#/"
-                                    }}
-                                />
-                                <MenuItem
-                                    label="Grafici e movimenti"
-                                    onClick={() => {
-                                        setMenuOpen(false)
-                                        window.location.hash = "#/insights"
-                                    }}
-                                />
-                                <MenuItem
-                                    label="Ricorrenti"
-                                    onClick={() => {
-                                        setMenuOpen(false)
-                                        window.location.hash = "#/recurring"
-                                    }}
-                                />
-                                <MenuItem
-                                    label="Profilo"
-                                    onClick={() => {
-                                        setMenuOpen(false)
-                                        window.location.hash = "#/profile"
-                                    }}
-                                />
-                                <MenuItem
-                                    label="Notifiche"
-                                    onClick={() => {
-                                        setMenuOpen(false)
-                                        window.location.hash = "#/notifications"
-                                    }}
-                                />
-                                <MenuItem
-                                    label="Tutorial"
-                                    onClick={() => {
-                                        setMenuOpen(false)
-                                        window.location.hash = "#/tutorial"
-                                    }}
-                                />
-                                <MenuItem
-                                    label="About"
-                                    onClick={() => {
-                                        setMenuOpen(false)
-                                        window.location.hash = "#/about"
-                                    }}
-                                />
-                            </nav>
-
-                            <div className="pb-[env(safe-area-inset-bottom)]" />
-                        </motion.div>
-                    </motion.div>
-                ) : null}
-            </AnimatePresence>
-
-            {/* Header */}
-            <header
-                className="sticky top-0 z-20 bg-[rgb(var(--bg))]/80 backdrop-blur-xl"
-                style={{ paddingTop: "max(env(safe-area-inset-top), 24px)" }}
-            >
-                <div className="px-4 py-4 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                        <h1 className="text-lg font-extrabold tracking-tight">HAIP</h1>
-                        <p className="text-xs text-[rgb(var(--muted-fg))]">Home</p>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                        <button
-                            type="button"
-                            className="
-                              h-10 px-3 rounded-2xl border
-                              bg-[rgb(var(--card))]
-                              border-[rgba(234,179,8,0.55)]
-                              text-sm font-extrabold
-                              text-amber-400
-                              hover:bg-[rgb(var(--card-2))]
-                            "
-                            onClick={() => openPremium("premium")}
-                            title="Premium"
-                        >
-                            Premium
-                        </button>
-
-                        <button
-                            type="button"
-                            className="h-10 w-10 rounded-2xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] flex items-center justify-center hover:bg-[rgb(var(--card-2))]"
-                            onClick={toggleTheme}
-                            title="Tema"
-                        >
-                            <ThemeIcon className="h-4 w-4" />
-                        </button>
-
-                        <button
-                            type="button"
-                            className="h-10 w-10 rounded-2xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] flex items-center justify-center hover:bg-[rgb(var(--card-2))]"
-                            onClick={() => setMenuOpen(true)}
-                            title="Menu"
-                        >
-                            <Menu className="h-4 w-4" />
-                        </button>
-                    </div>
-                </div>
-            </header>
+            {/* ✅ Header unico, come tutte le altre pagine */}
+            <GlobalTopBar page="Home" onPremium={() => openPremium("premium")} />
 
             <main className="px-4 pb-10 pt-2">
                 <div className="max-w-6xl mx-auto">
@@ -372,9 +210,7 @@ export default function Home({ registerCloseNewTxModal }) {
                                     className="w-full rounded-3xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] p-5 text-left hover:bg-[rgb(var(--card-2))]"
                                 >
                                     <p className="text-sm font-extrabold tracking-tight">📊 Grafici e movimenti</p>
-                                    <p className={`mt-1 text-sm ${muted}`}>
-                                        Torta + elenco completo + search (con regole Premium).
-                                    </p>
+                                    <p className={`mt-1 text-sm ${muted}`}>Torta + elenco completo + search (con regole Premium).</p>
                                 </button>
 
                                 <button
@@ -432,20 +268,8 @@ export default function Home({ registerCloseNewTxModal }) {
                 isLoading={false}
             />
 
-            <UndoToast
-                open={undoOpen}
-                message="Movimento eliminato."
-                onUndo={() => {
-                    if (!lastDeleted) return
-                    // qui l’undo vero lo gestisce Insights (Home non elimina più)
-                    setUndoOpen(false)
-                }}
-                onClose={() => {
-                    if (undoTimer) clearTimeout(undoTimer)
-                    setUndoOpen(false)
-                    setLastDeleted(null)
-                }}
-            />
+            {/* Home non fa delete, quindi non appare; lo tengo per compatibilità */}
+            <UndoToast open={undoOpen} message="Movimento eliminato." onUndo={() => {}} onClose={() => setUndoOpen(false)} />
 
             <PremiumUpsellDialog
                 open={premiumUpsellOpen}
@@ -462,18 +286,7 @@ export default function Home({ registerCloseNewTxModal }) {
 
             <BillingNotReadyDialog open={billingNotReadyOpen} onClose={() => setBillingNotReadyOpen(false)} />
 
-            <motion.button
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => openNewTransaction("uscita")}
-                className="fixed right-6 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] h-14 w-14 rounded-full shadow-lg flex items-center justify-center md:hidden bg-slate-900 text-white"
-                aria-label="Nuovo movimento"
-                title="Nuovo movimento"
-            >
-                <Plus className="h-6 w-6" />
-            </motion.button>
+            <div className="pb-[env(safe-area-inset-bottom)]" />
         </div>
     )
 }
-

@@ -3,9 +3,15 @@ import { Bell, Clock, ExternalLink, ShieldAlert, Beaker } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { applyNotificationSettings, debugTestNotification } from "@/services/notifications"
 import { APP_CONFIG } from "@/config/config"
+
 import GlobalTopBar from "@/components/layout/GlobalTopBar"
 
+import PremiumUpsellDialog from "@/components/ui/PremiumUpsellDialog"
+import BillingNotReadyDialog from "@/components/ui/BillingNotReadyDialog"
+import PremiumHub from "@/components/premium/PremiumHub"
+
 const SETTINGS_KEY = "howamipoor:settings:v1"
+const PREMIUM_EVENT = "haip:openPremium"
 
 function readSettings() {
     try {
@@ -45,11 +51,18 @@ export default function Notifications() {
 
     const [nativeInfo, setNativeInfo] = useState({
         isNative: false,
-        notifPermission: "unknown",
+        notifPermission: "unknown", // unknown | granted | denied
     })
 
     const applyTimer = useRef(null)
 
+    // premium modal state
+    const [premiumUpsellOpen, setPremiumUpsellOpen] = useState(false)
+    const [premiumReason, setPremiumReason] = useState("premium")
+    const [premiumHubOpen, setPremiumHubOpen] = useState(false)
+    const [billingNotReadyOpen, setBillingNotReadyOpen] = useState(false)
+
+    // Persist + apply (debounced) quando cambiano i toggle
     useEffect(() => {
         writeSettings(settings)
 
@@ -70,6 +83,7 @@ export default function Notifications() {
         }
     }, [settings])
 
+    // Detect native + permission status
     useEffect(() => {
         ;(async () => {
             try {
@@ -90,6 +104,17 @@ export default function Notifications() {
                 setNativeInfo({ isNative: false, notifPermission: "unknown" })
             }
         })()
+    }, [])
+
+    // ✅ ascolta premium click dalla topbar/menu
+    useEffect(() => {
+        const onPremium = (e) => {
+            const reason = e?.detail?.reason || "premium"
+            setPremiumReason(reason)
+            setPremiumUpsellOpen(true)
+        }
+        window.addEventListener(PREMIUM_EVENT, onPremium)
+        return () => window.removeEventListener(PREMIUM_EVENT, onPremium)
     }, [])
 
     const surface = "rounded-3xl border bg-[rgb(var(--card))] border-[rgb(var(--border))]"
@@ -275,6 +300,21 @@ export default function Notifications() {
                     </section>
                 </div>
             </main>
+
+            <PremiumUpsellDialog
+                open={premiumUpsellOpen}
+                reason={premiumReason}
+                onClose={() => setPremiumUpsellOpen(false)}
+                onConfirm={() => setPremiumHubOpen(true)}
+            />
+
+            <PremiumHub
+                open={premiumHubOpen}
+                onClose={() => setPremiumHubOpen(false)}
+                onBillingNotReady={() => setBillingNotReadyOpen(true)}
+            />
+
+            <BillingNotReadyDialog open={billingNotReadyOpen} onClose={() => setBillingNotReadyOpen(false)} />
 
             <div className="pb-[env(safe-area-inset-bottom)]" />
         </div>

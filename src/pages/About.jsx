@@ -1,8 +1,16 @@
+import { useEffect, useState } from "react"
 import { ExternalLink, Shield, ScrollText } from "lucide-react"
+
 import GlobalTopBar from "@/components/layout/GlobalTopBar"
+
+import PremiumUpsellDialog from "@/components/ui/PremiumUpsellDialog"
+import BillingNotReadyDialog from "@/components/ui/BillingNotReadyDialog"
+import PremiumHub from "@/components/premium/PremiumHub"
 
 const PRIVACY_URL = "https://jhon-apps.github.io/how-am-i-poor/privacy.html"
 const GDPR_URL = "https://jhon-apps.github.io/how-am-i-poor/gdpr.html"
+
+const PREMIUM_EVENT = "haip:openPremium"
 
 function LinkCard({ icon: Icon, title, desc, href }) {
     return (
@@ -31,6 +39,23 @@ function LinkCard({ icon: Icon, title, desc, href }) {
 }
 
 export default function About() {
+    // premium modal state
+    const [premiumUpsellOpen, setPremiumUpsellOpen] = useState(false)
+    const [premiumReason, setPremiumReason] = useState("premium")
+    const [premiumHubOpen, setPremiumHubOpen] = useState(false)
+    const [billingNotReadyOpen, setBillingNotReadyOpen] = useState(false)
+
+    // ✅ ascolta premium click dalla topbar/menu
+    useEffect(() => {
+        const onPremium = (e) => {
+            const reason = e?.detail?.reason || "premium"
+            setPremiumReason(reason)
+            setPremiumUpsellOpen(true)
+        }
+        window.addEventListener(PREMIUM_EVENT, onPremium)
+        return () => window.removeEventListener(PREMIUM_EVENT, onPremium)
+    }, [])
+
     const muted = "text-[rgb(var(--muted-fg))]"
 
     return (
@@ -71,6 +96,21 @@ export default function About() {
                     </div>
                 </div>
             </main>
+
+            <PremiumUpsellDialog
+                open={premiumUpsellOpen}
+                reason={premiumReason}
+                onClose={() => setPremiumUpsellOpen(false)}
+                onConfirm={() => setPremiumHubOpen(true)}
+            />
+
+            <PremiumHub
+                open={premiumHubOpen}
+                onClose={() => setPremiumHubOpen(false)}
+                onBillingNotReady={() => setBillingNotReadyOpen(true)}
+            />
+
+            <BillingNotReadyDialog open={billingNotReadyOpen} onClose={() => setBillingNotReadyOpen(false)} />
 
             <div className="pb-[env(safe-area-inset-bottom)]" />
         </div>
