@@ -3,6 +3,7 @@ import { Bell, Clock, ExternalLink, ShieldAlert, Beaker } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { applyNotificationSettings, debugTestNotification } from "@/services/notifications"
 import { APP_CONFIG } from "@/config/config"
+import GlobalTopBar from "@/components/layout/GlobalTopBar"
 
 const SETTINGS_KEY = "howamipoor:settings:v1"
 
@@ -44,12 +45,11 @@ export default function Notifications() {
 
     const [nativeInfo, setNativeInfo] = useState({
         isNative: false,
-        notifPermission: "unknown", // unknown | granted | denied
+        notifPermission: "unknown",
     })
 
     const applyTimer = useRef(null)
 
-    // Persist + apply (debounced) quando cambiano i toggle
     useEffect(() => {
         writeSettings(settings)
 
@@ -70,7 +70,6 @@ export default function Notifications() {
         }
     }, [settings])
 
-    // Detect native + permission status
     useEffect(() => {
         ;(async () => {
             try {
@@ -141,21 +140,7 @@ export default function Notifications() {
 
     return (
         <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
-            <header
-                className="sticky top-0 z-20 bg-[rgb(var(--bg))]/80 backdrop-blur-xl"
-                style={{ paddingTop: "max(env(safe-area-inset-top), 24px)" }}
-            >
-                <div className="px-4 py-4 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                        <h1 className="text-lg font-extrabold tracking-tight">Notifiche</h1>
-                        <p className={`text-xs ${mutedClass}`}>Reminder giornaliero + inattività.</p>
-                    </div>
-
-                    <Button variant="outline" className="rounded-2xl" onClick={() => (window.location.hash = "#/")}>
-                        Home
-                    </Button>
-                </div>
-            </header>
+            <GlobalTopBar page="Notifiche" />
 
             <main className="px-4 pb-10 pt-3">
                 <div className="max-w-2xl mx-auto space-y-4">
@@ -273,7 +258,11 @@ export default function Notifications() {
 
                         {APP_CONFIG?.DEV_TOOLS_ENABLED && (
                             <div className="pt-2">
-                                <Button variant="outline" onClick={debugTestNotification} className="inline-flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={debugTestNotification}
+                                    className="inline-flex items-center gap-2"
+                                >
                                     <Beaker className="h-4 w-4" />
                                     Test notifica (5s)
                                 </Button>

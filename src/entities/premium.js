@@ -6,7 +6,25 @@ export function isOlderThanDays(dateISO, days) {
     return diffDays > days
 }
 
+/**
+ * Lock storico transazioni (Free): oltre 30 giorni.
+ */
 export function isLockedTransaction(tx, isPremium) {
     if (isPremium) return false
     return isOlderThanDays(tx?.date, 30)
+}
+
+/**
+ * Feature gates (hard-gated su Premium)
+ */
+export function canSearchTransactions(isPremium) {
+    return !!isPremium
+}
+
+export function canUseAllRange(isPremium) {
+    return !!isPremium
+}
+
+export function canUseRecurring(isPremium) {
+    return !!isPremium
 }

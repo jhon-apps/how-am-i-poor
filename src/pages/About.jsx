@@ -1,5 +1,5 @@
 import { ExternalLink, Shield, ScrollText } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import GlobalTopBar from "@/components/layout/GlobalTopBar"
 
 const PRIVACY_URL = "https://jhon-apps.github.io/how-am-i-poor/privacy.html"
 const GDPR_URL = "https://jhon-apps.github.io/how-am-i-poor/gdpr.html"
@@ -35,21 +35,7 @@ export default function About() {
 
     return (
         <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
-            <header
-                className="sticky top-0 z-20 bg-[rgb(var(--bg))]/80 backdrop-blur-xl"
-                style={{ paddingTop: "max(env(safe-area-inset-top), 24px)" }}
-            >
-                <div className="px-4 py-4 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                        <h1 className="text-lg font-extrabold tracking-tight">About</h1>
-                        <p className={`text-xs ${muted}`}>JhonApps · HAIP — How Am I Poor</p>
-                    </div>
-
-                    <Button variant="outline" className="rounded-2xl" onClick={() => (window.location.hash = "#/")}>
-                        Home
-                    </Button>
-                </div>
-            </header>
+            <GlobalTopBar page="About" />
 
             <main className="px-4 pb-10 pt-3">
                 <div className="max-w-2xl mx-auto space-y-4">

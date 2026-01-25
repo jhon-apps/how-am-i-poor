@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect } from "react"
 import { Lock, Search } from "lucide-react"
-import { Button } from "@/components/ui/button"
 
 import ExpenseChart from "@/components/dashboard/ExpenseChart"
 import CategoryBreakdownList from "@/components/dashboard/CategoryBreakdownList"
@@ -17,24 +16,8 @@ import useTransactions from "@/hooks/useTransactions"
 import usePremium from "@/hooks/usePremium"
 import useAdsConsent from "@/hooks/useAdsConsent"
 
-function toDateOnlyISO(d) {
-    if (!d) return ""
-    return String(d).slice(0, 10)
-}
-
-function daysBetween(aISO, bISO) {
-    const a = new Date(aISO)
-    const b = new Date(bISO)
-    const ms = b.getTime() - a.getTime()
-    return Math.floor(ms / (1000 * 60 * 60 * 24))
-}
-
-function isOlderThan30Days(tx) {
-    const txDate = toDateOnlyISO(tx?.date)
-    if (!txDate) return false
-    const today = new Date().toISOString().slice(0, 10)
-    return daysBetween(txDate, today) > 30
-}
+import { isLockedTransaction, canSearchTransactions, canUseAllRange } from "@/entities/premium"
+import GlobalTopBar from "@/components/layout/GlobalTopBar"
 
 function isWithinLastDays(dateISO, days) {
     const d = new Date(dateISO)
@@ -60,7 +43,7 @@ export default function Insights() {
 
     const [leftView, setLeftView] = useState("chart") // chart | breakdown
     const [chartRange, setChartRange] = useState("30d") // 30d | all
-    const effectiveRange = isPremium ? chartRange : "30d"
+    const effectiveRange = canUseAllRange(isPremium) ? chartRange : "30d"
 
     const [query, setQuery] = useState("")
     const debouncedQuery = useDebouncedValue(query, 180)
@@ -77,11 +60,9 @@ export default function Insights() {
     const [premiumHubOpen, setPremiumHubOpen] = useState(false)
     const [billingNotReadyOpen, setBillingNotReadyOpen] = useState(false)
 
-    // "virtualizzazione" povera: paginate (senza lib)
     const PAGE = 60
     const [visibleCount, setVisibleCount] = useState(PAGE)
 
-    // reset paginazione quando cambia query/range/transactions
     useEffect(() => {
         setVisibleCount(PAGE)
     }, [debouncedQuery, effectiveRange, transactions.length])
@@ -108,47 +89,36 @@ export default function Insights() {
         return uniq
     }, [transactions])
 
-    // ✅ chart data calcolato solo per la view attuale (evita lavoro inutile)
     const chartTransactions = useMemo(() => {
-        // Se la UI grafici non è visibile (cioè siamo nella lista movimenti), evita di filtrare?
-        // In realtà grafici sono sempre sopra: ma almeno evitiamo ricomputazioni extra se range è fisso.
         if (effectiveRange === "all") return transactions
         return transactions.filter((t) => isWithinLastDays(t.date, 30))
     }, [transactions, effectiveRange])
 
     const filtered = useMemo(() => {
-        const q = String(debouncedQuery || "").trim().toLowerCase()
+        const canSearch = canSearchTransactions(isPremium)
+        const q = canSearch ? String(debouncedQuery || "").trim().toLowerCase() : ""
         if (!q) return transactions
-
-        // filtro semplice: description/category
         return transactions.filter((t) => {
             const desc = String(t.description || "").toLowerCase()
             const cat = String(t.category || "").toLowerCase()
             return desc.includes(q) || cat.includes(q)
         })
-    }, [transactions, debouncedQuery])
+    }, [transactions, debouncedQuery, isPremium])
 
-    // split locked/unlocked (premium rule) + applica "virtualizzazione"
     const { unlocked, locked, hasMoreUnlocked } = useMemo(() => {
         const u = []
         const l = []
-
         for (const t of filtered) {
             if (!t) continue
-            if (!isPremium && isOlderThan30Days(t)) l.push(t)
+            if (isLockedTransaction(t, isPremium)) l.push(t)
             else u.push(t)
         }
-
         const slicedU = u.slice(0, visibleCount)
-        return {
-            unlocked: slicedU,
-            locked: l,
-            hasMoreUnlocked: u.length > slicedU.length,
-        }
+        return { unlocked: slicedU, locked: l, hasMoreUnlocked: u.length > slicedU.length }
     }, [filtered, isPremium, visibleCount])
 
     const handleEdit = (tx) => {
-        if (!isPremium && isOlderThan30Days(tx)) return openPremium("history")
+        if (isLockedTransaction(tx, isPremium)) return openPremium("history")
         setEditingTx(tx)
         setIsModalOpen(true)
     }
@@ -156,8 +126,7 @@ export default function Insights() {
     const handleDelete = (id) => {
         const tx = transactions.find((t) => t.id === id)
         if (!tx) return
-
-        if (!isPremium && isOlderThan30Days(tx)) return openPremium("history")
+        if (isLockedTransaction(tx, isPremium)) return openPremium("history")
 
         remove(id)
         setLastDeleted(tx)
@@ -180,31 +149,18 @@ export default function Insights() {
     }
 
     const muted = "text-[rgb(var(--muted-fg))]"
+    const canSearch = canSearchTransactions(isPremium)
 
     return (
         <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
-            <header
-                className="sticky top-0 z-20 bg-[rgb(var(--bg))]/80 backdrop-blur-xl"
-                style={{ paddingTop: "max(env(safe-area-inset-top), 24px)" }}
-            >
-                <div className="px-4 py-4 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                        <h1 className="text-lg font-extrabold tracking-tight">Grafici e movimenti</h1>
-                        <p className={`text-xs ${muted}`}>Qui ti fai davvero male.</p>
-                    </div>
-
-                    <Button variant="outline" className="rounded-2xl" onClick={() => (window.location.hash = "#/")}>
-                        Home
-                    </Button>
-                </div>
-            </header>
+            <GlobalTopBar page="Grafici e movimenti" />
 
             <main className="px-4 pb-10 pt-2">
                 <div className="max-w-6xl mx-auto space-y-4">
-                    <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="insights-top" />
-
-                    {/* Grafici */}
                     <div className="grid gap-3 rounded-3xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] p-4">
+                        {/* ✅ ADS qui, non sopra la topbar */}
+                        <AdSlot isPremium={isPremium} adsConsent={adsConsent} placement="insights-top" />
+
                         <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0">
                                 <p className="text-sm font-extrabold tracking-tight">Grafico</p>
@@ -256,7 +212,7 @@ export default function Insights() {
 
                             <button
                                 type="button"
-                                onClick={() => (isPremium ? setChartRange("all") : openPremium("chart_all"))}
+                                onClick={() => (canUseAllRange(isPremium) ? setChartRange("all") : openPremium("chart_all"))}
                                 className={[
                                     "h-9 px-3 rounded-2xl border text-xs font-semibold inline-flex items-center gap-2",
                                     effectiveRange === "all"
@@ -264,7 +220,7 @@ export default function Insights() {
                                         : "bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]",
                                 ].join(" ")}
                             >
-                                {!isPremium ? <Lock className="h-3.5 w-3.5" /> : null}
+                                {!canUseAllRange(isPremium) ? <Lock className="h-3.5 w-3.5" /> : null}
                                 Tutto
                             </button>
                         </div>
@@ -278,42 +234,41 @@ export default function Insights() {
                         </div>
                     </div>
 
-                    {/* Search + Lista */}
                     <div className="rounded-3xl border bg-[rgb(var(--card))] border-[rgb(var(--border))] p-4">
                         <div className="flex items-center justify-between gap-2">
                             <p className="text-sm font-extrabold tracking-tight">Movimenti</p>
-                            <Button
-                                variant="outline"
-                                className="rounded-2xl"
+                            <button
+                                type="button"
+                                className="rounded-2xl border px-4 py-2 text-sm bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]"
                                 onClick={() => {
                                     setEditingTx(null)
                                     setIsModalOpen(true)
                                 }}
                             >
                                 Nuovo
-                            </Button>
+                            </button>
                         </div>
 
                         <div className="mt-3 relative">
                             <input
-                                value={isPremium ? query : ""}
+                                value={canSearch ? query : ""}
                                 onChange={(e) => {
-                                    if (!isPremium) return
+                                    if (!canSearch) return
                                     setQuery(e.target.value)
                                 }}
-                                readOnly={!isPremium}
+                                readOnly={!canSearch}
                                 onClick={() => {
-                                    if (!isPremium) openPremium("search")
+                                    if (!canSearch) openPremium("search")
                                 }}
-                                placeholder={isPremium ? "Cerca descrizione o categoria…" : "Cerca (Premium)"}
+                                placeholder={canSearch ? "Cerca descrizione o categoria…" : "Cerca (Premium)"}
                                 className={[
                                     "w-full rounded-2xl border px-3 py-2 text-sm outline-none shadow-sm",
                                     "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]",
-                                    !isPremium ? "cursor-pointer pr-10" : "",
+                                    !canSearch ? "cursor-pointer pr-10" : "",
                                 ].join(" ")}
                             />
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                                {!isPremium ? <Lock className={`h-4 w-4 ${muted}`} /> : <Search className={`h-4 w-4 ${muted}`} />}
+                                {!canSearch ? <Lock className={`h-4 w-4 ${muted}`} /> : <Search className={`h-4 w-4 ${muted}`} />}
                             </div>
                         </div>
 
@@ -393,7 +348,6 @@ export default function Insights() {
                 onSubmit={(data) => {
                     if (editingTx?.id) update(data)
                     else add(data)
-
                     setIsModalOpen(false)
                     setEditingTx(null)
                 }}

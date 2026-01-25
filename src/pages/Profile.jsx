@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
+import GlobalTopBar from "@/components/layout/GlobalTopBar"
 
 const USER_KEY = "howamipoor:user:v1"
 
@@ -34,7 +35,6 @@ export default function Profile() {
     const [savedAt, setSavedAt] = useState(null)
 
     useEffect(() => {
-        // sync se cambia da altre tab / refresh
         const onStorage = (e) => {
             if (e.key !== USER_KEY) return
             const u = readUser()
@@ -63,21 +63,7 @@ export default function Profile() {
 
     return (
         <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
-            <header
-                className="sticky top-0 z-20 bg-[rgb(var(--bg))]/80 backdrop-blur-xl"
-                style={{ paddingTop: "max(env(safe-area-inset-top), 24px)" }}
-            >
-                <div className="px-4 py-4 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                        <h1 className="text-lg font-extrabold tracking-tight">Profilo</h1>
-                        <p className={`text-xs ${muted}`}>Dimmi come ti chiami, così posso giudicarti meglio.</p>
-                    </div>
-
-                    <Button variant="outline" className="rounded-2xl" onClick={() => (window.location.hash = "#/")}>
-                        Home
-                    </Button>
-                </div>
-            </header>
+            <GlobalTopBar page="Profilo" />
 
             <main className="px-4 pb-10 pt-3">
                 <div className="max-w-2xl mx-auto space-y-4">
@@ -85,7 +71,7 @@ export default function Profile() {
                         <label className="block">
                             <span className="text-sm font-extrabold tracking-tight">Nome</span>
                             <p className={`mt-1 text-xs ${muted}`}>
-                                Usato solo in locale. Nessun account. Nessun server. Nessuna scusa.
+                                Solo in locale. Nessun account. Nessun server. Nessuna scusa.
                             </p>
 
                             <input
@@ -119,9 +105,7 @@ export default function Profile() {
                             </Button>
 
                             {savedAt ? (
-                                <span className={`ml-auto text-xs ${muted}`}>
-                                    Salvato
-                                </span>
+                                <span className={`ml-auto text-xs ${muted}`}>Salvato</span>
                             ) : (
                                 <span className={`ml-auto text-xs ${muted}`}> </span>
                             )}
