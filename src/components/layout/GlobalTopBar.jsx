@@ -51,6 +51,45 @@ export default function GlobalTopBar({ page = "Home", onPremium }) {
         return () => window.removeEventListener("hashchange", onHash)
     }, [])
 
+    // ✅ Scroll lock quando drawer aperto (mobile + desktop)
+    useEffect(() => {
+        if (!menuOpen) return
+
+        const body = document.body
+        const html = document.documentElement
+
+        // salva stato attuale
+        const prevBodyOverflow = body.style.overflow
+        const prevBodyPosition = body.style.position
+        const prevBodyTop = body.style.top
+        const prevBodyWidth = body.style.width
+        const prevHtmlOverscroll = html.style.overscrollBehaviorY
+
+        const scrollY = window.scrollY || 0
+
+        // blocca scroll senza saltare (position fixed trick)
+        body.style.overflow = "hidden"
+        body.style.position = "fixed"
+        body.style.top = `-${scrollY}px`
+        body.style.width = "100%"
+
+        // evita rubber-band scroll dietro (soprattutto iOS/Chrome mobile)
+        html.style.overscrollBehaviorY = "none"
+
+        return () => {
+            // ripristina
+            body.style.overflow = prevBodyOverflow
+            body.style.position = prevBodyPosition
+            body.style.top = prevBodyTop
+            body.style.width = prevBodyWidth
+            html.style.overscrollBehaviorY = prevHtmlOverscroll
+
+            // torna allo scroll precedente
+            const y = Math.abs(parseInt(body.style.top || "0", 10)) || scrollY
+            window.scrollTo(0, y)
+        }
+    }, [menuOpen])
+
     const go = (hash) => {
         window.location.hash = hash
         setMenuOpen(false)
@@ -61,10 +100,8 @@ export default function GlobalTopBar({ page = "Home", onPremium }) {
         window.dispatchEvent(new CustomEvent(PREMIUM_EVENT, { detail: { reason: "premium" } }))
     }
 
-    // Spacer per topbar fixed
     const spacerStyle = { height: "calc(max(env(safe-area-inset-top), 24px) + 64px)" }
 
-    // Stili sezione
     const sectionWrap =
         "rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--card))]/70 backdrop-blur-xl p-2"
     const sectionTitle =
@@ -75,7 +112,6 @@ export default function GlobalTopBar({ page = "Home", onPremium }) {
 
     return (
         <>
-            {/* Glow animation (3s) */}
             <style>{`
 @keyframes haipPremiumGlow {
   0%, 72% { box-shadow: 0 0 0 rgba(0,0,0,0); transform: translateZ(0); }
@@ -99,7 +135,6 @@ export default function GlobalTopBar({ page = "Home", onPremium }) {
 
             <div aria-hidden="true" style={spacerStyle} />
 
-            {/* Drawer */}
             <AnimatePresence>
                 {menuOpen ? (
                     <motion.div
@@ -110,7 +145,6 @@ export default function GlobalTopBar({ page = "Home", onPremium }) {
                     >
                         <div className="absolute inset-0 bg-black/60" onClick={() => setMenuOpen(false)} />
 
-                        {/* Drawer panel: più chiaro */}
                         <motion.div
                             className="
                 absolute left-0 top-0 h-full w-[86%] max-w-sm
@@ -123,6 +157,8 @@ export default function GlobalTopBar({ page = "Home", onPremium }) {
                             animate={{ x: 0, opacity: 1 }}
                             exit={{ x: -24, opacity: 0 }}
                             transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                            // ✅ evita che touchmove propaghi al body (alcuni browser)
+                            onTouchMove={(e) => e.stopPropagation()}
                         >
                             <div style={{ paddingTop: "max(env(safe-area-inset-top), 24px)" }} />
 
@@ -142,8 +178,8 @@ export default function GlobalTopBar({ page = "Home", onPremium }) {
                                 </button>
                             </div>
 
-                            <div className="px-3 space-y-3">
-                                {/* Sezione Premium */}
+                            {/* ✅ contenitore scrollabile del menu */}
+                            <div className="px-3 pb-6 space-y-3 overflow-y-auto h-[calc(100%-96px-env(safe-area-inset-top))]">
                                 <div className={sectionWrap}>
                                     <div className={sectionTitle}>Premium</div>
                                     <div className={sectionBody}>
@@ -165,40 +201,25 @@ export default function GlobalTopBar({ page = "Home", onPremium }) {
                                     </div>
                                 </div>
 
-                                {/* Sezione Navigazione */}
                                 <div className={sectionWrap}>
                                     <div className={sectionTitle}>Navigazione</div>
                                     <div className={sectionBody}>
                                         <MenuItem label="Home" active={activeKey === "home"} onClick={() => go("#/")} />
-                                        <MenuItem
-                                            label="Grafici e movimenti"
-                                            active={activeKey === "insights"}
-                                            onClick={() => go("#/insights")}
-                                        />
-                                        <MenuItem
-                                            label="Ricorrenti"
-                                            active={activeKey === "recurring"}
-                                            onClick={() => go("#/recurring")}
-                                        />
+                                        <MenuItem label="Grafici e movimenti" active={activeKey === "insights"} onClick={() => go("#/insights")} />
+                                        <MenuItem label="Ricorrenti" active={activeKey === "recurring"} onClick={() => go("#/recurring")} />
                                     </div>
                                 </div>
 
-                                {/* Sezione Impostazioni */}
                                 <div className={sectionWrap}>
                                     <div className={sectionTitle}>Impostazioni</div>
                                     <div className={sectionBody}>
                                         <MenuItem label="Profilo" active={activeKey === "profile"} onClick={() => go("#/profile")} />
-                                        <MenuItem
-                                            label="Notifiche"
-                                            active={activeKey === "notifications"}
-                                            onClick={() => go("#/notifications")}
-                                        />
+                                        <MenuItem label="Notifiche" active={activeKey === "notifications"} onClick={() => go("#/notifications")} />
                                         <MenuItem label="About" active={activeKey === "about"} onClick={() => go("#/about")} />
                                         <MenuItem label="Tutorial" active={activeKey === "tutorial"} onClick={() => go("#/tutorial")} />
                                     </div>
                                 </div>
 
-                                {/* Sezione Dev (solo dev) */}
                                 {showDev ? (
                                     <div className={sectionWrap}>
                                         <div className={sectionTitle}>Dev</div>
@@ -215,7 +236,6 @@ export default function GlobalTopBar({ page = "Home", onPremium }) {
                 ) : null}
             </AnimatePresence>
 
-            {/* Top bar fixed */}
             <header
                 className="fixed top-0 left-0 right-0 z-[50] bg-[rgb(var(--bg))]/80 backdrop-blur-xl"
                 style={{ paddingTop: "max(env(safe-area-inset-top), 24px)" }}
