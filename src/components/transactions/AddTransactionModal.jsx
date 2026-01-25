@@ -1,306 +1,331 @@
-import { useMemo, useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Plus, Minus } from "lucide-react"
-import {
-    getCategoriesByType,
-    getDefaultCategoryByType,
-    isCategoryAllowedForType,
-    getCategoryLabel,
-} from "@/entities/categories"
-import { suggestCategory } from "@/entities/autoCategory"
+import { useEffect, useMemo, useState } from "react"
+import { AnimatePresence, motion } from "framer-motion"
+import { X, Lock } from "lucide-react"
 
 import AdSlot from "@/components/ads/AdSlot"
 import usePremium from "@/hooks/usePremium"
 import useAdsConsent from "@/hooks/useAdsConsent"
 
-const today = () => new Date().toISOString().split("T")[0]
-
-function buildInitialState({ transaction, prefill, defaultType }) {
-    const baseType = transaction?.type ?? prefill?.type ?? defaultType ?? "uscita"
-
-    const categoryFromTx = transaction?.category ?? prefill?.category
-    const category =
-        categoryFromTx && isCategoryAllowedForType(categoryFromTx, baseType)
-            ? categoryFromTx
-            : getDefaultCategoryByType(baseType)
-
-    return {
-        type: baseType,
-        formData: {
-            description: transaction?.description ?? prefill?.description ?? "",
-            amount: transaction?.amount ?? prefill?.amount ?? "",
-            date: (transaction?.date ?? prefill?.date ?? today()).slice(0, 10),
-            category,
-        },
-        error: "",
+function formatISODate(d) {
+    try {
+        return new Date(d).toISOString().slice(0, 10)
+    } catch {
+        return new Date().toISOString().slice(0, 10)
     }
 }
 
 function parseAmount(raw) {
-    if (raw == null) return NaN
-    let s = String(raw).trim()
-    s = s.replace(/\s/g, "")
-    s = s.replace(/[€$£]/g, "")
-    if (s.includes(".") && s.includes(",")) {
-        s = s.replace(/\./g, "")
-        s = s.replace(",", ".")
-        return Number(s)
-    }
-    if (s.includes(",") && !s.includes(".")) {
-        s = s.replace(",", ".")
-        return Number(s)
-    }
-    return Number(s)
+    const s = String(raw ?? "")
+        .trim()
+        .replace(/\s/g, "")
+        .replace(",", ".")
+    if (!s) return null
+    const n = Number(s)
+    if (!Number.isFinite(n)) return null
+    return Math.round(n * 100) / 100
 }
 
 export default function AddTransactionModal({
-                                                isOpen,
+                                                isOpen = false,
+                                                transaction = null, // {id, type, description, amount, category, date}
+                                                defaultType = "uscita", // "entrata" | "uscita"
+                                                prefill = null, // {type, description, amount, category, date}
+                                                recentCategories = [], // array string
                                                 onClose,
                                                 onSubmit,
-                                                transaction,
-                                                isLoading,
-                                                recentCategories = [],
-                                                defaultType = "uscita",
-                                                prefill = null,
+                                                isLoading = false,
                                             }) {
     const { isPremium } = usePremium()
     const { adsConsent } = useAdsConsent()
 
-    const initial = useMemo(
-        () => buildInitialState({ transaction, prefill, defaultType }),
-        [transaction, prefill, defaultType]
-    )
+    const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), [])
+
+    // Normalizza type
+    const initialType = useMemo(() => {
+        const t = prefill?.type ?? transaction?.type ?? defaultType
+        return t === "entrata" ? "entrata" : "uscita"
+    }, [prefill?.type, transaction?.type, defaultType])
+
+    const initial = useMemo(() => {
+        const source = prefill ?? transaction ?? {}
+        return {
+            id: transaction?.id ?? null,
+            type: initialType,
+            description: source.description ?? "",
+            amount: source.amount != null ? String(source.amount) : "",
+            category: source.category ?? "altro",
+            date: source.date ? String(source.date).slice(0, 10) : todayISO,
+        }
+    }, [prefill, transaction, initialType, todayISO])
 
     const [type, setType] = useState(initial.type)
-    const [formData, setFormData] = useState(initial.formData)
-    const [error, setError] = useState(initial.error)
+    const [description, setDescription] = useState(initial.description)
+    const [amount, setAmount] = useState(initial.amount)
+    const [category, setCategory] = useState(initial.category)
+    const [date, setDate] = useState(initial.date)
 
-    const [manualCategory, setManualCategory] = useState(false)
+    // reset on open / when editing changes
+    useEffect(() => {
+        if (!isOpen) return
+        setType(initial.type)
+        setDescription(initial.description)
+        setAmount(initial.amount)
+        setCategory(initial.category)
+        setDate(initial.date)
+    }, [isOpen, initial])
 
-    // getCategoriesByType() ritorna OGGETTI {key,label}; qui lavoriamo sempre con chiavi stringa
-    const categoryKeysForType = useMemo(
-        () => getCategoriesByType(type).map((c) => c?.key).filter(Boolean),
-        [type]
-    )
+    const isFuture = useMemo(() => {
+        if (!date) return false
+        // date è YYYY-MM-DD => confronto string OK
+        return date > todayISO
+    }, [date, todayISO])
 
-    const pills = useMemo(() => {
-        const uniq = []
-        for (const c of recentCategories) {
+    const amountNum = useMemo(() => parseAmount(amount), [amount])
+    const canSubmit = useMemo(() => {
+        if (isLoading) return false
+        if (!description.trim()) return false
+        if (amountNum == null || amountNum <= 0) return false
+        if (!date) return false
+        return true
+    }, [description, amountNum, date, isLoading])
+
+    // categorie: recent + fallback "altro" (dedup)
+    const categories = useMemo(() => {
+        const out = []
+        for (const c of recentCategories || []) {
             if (!c) continue
-            if (!isCategoryAllowedForType(c, type)) continue
-            if (!uniq.includes(c)) uniq.push(c)
-            if (uniq.length >= 4) break
+            if (!out.includes(c)) out.push(c)
         }
-        if (!uniq.length) {
-            return type === "entrata"
-                ? ["stipendio", "entrate_extra", "bonus", "altro"]
-                : ["cibo", "casa", "trasporti", "altro"]
-        }
-        return uniq
-    }, [recentCategories, type])
+        if (!out.includes("altro")) out.push("altro")
+        return out
+    }, [recentCategories])
 
-    // Reset stato quando cambia edit/new/prefill
-    useEffect(() => {
-        const next = buildInitialState({ transaction, prefill, defaultType })
-        setType(next.type)
-        setFormData(next.formData)
-        setError("")
-        setManualCategory(false)
-    }, [transaction, prefill, defaultType, isOpen])
+    const title = transaction?.id ? "Modifica movimento" : type === "entrata" ? "Nuova entrata" : "Nuova uscita"
 
-    const setTypeSafe = (nextType) => {
-        setError("")
-        setType(nextType)
-        setManualCategory(false)
-        setFormData((p) => {
-            if (isCategoryAllowedForType(p.category, nextType)) return p
-            return { ...p, category: getDefaultCategoryByType(nextType) }
-        })
+    const handleClose = () => {
+        onClose?.()
     }
-
-    // suggerimento categoria in base a descrizione (se non scelta manualmente)
-    useEffect(() => {
-        const s = suggestCategory(formData.description, type)
-        const valid = s && isCategoryAllowedForType(s, type) ? s : null
-
-        if (!manualCategory && valid) {
-            setFormData((p) => (p.category === valid ? p : { ...p, category: valid }))
-        }
-    }, [formData.description, type, manualCategory])
 
     const handleSubmit = (e) => {
-        e.preventDefault()
-        setError("")
+        e?.preventDefault?.()
+        if (!canSubmit) return
 
-        const desc = String(formData.description || "").trim()
-        const parsed = parseAmount(formData.amount)
-        const amount = Math.abs(parsed)
-
-        if (desc.length < 2) return setError("Descrizione troppo corta.")
-        if (!Number.isFinite(amount) || amount <= 0) return setError("Inserisci un importo valido (> 0).")
-        if (!formData.date) return setError("Seleziona una data valida.")
-        if (!isCategoryAllowedForType(formData.category, type)) return setError("Categoria non valida per questo tipo.")
-
-        onSubmit({
-            ...(transaction ?? {}),
-            ...formData,
-            description: desc,
-            amount,
+        const payload = {
+            ...(transaction?.id ? { id: transaction.id } : null),
             type,
-        })
+            description: description.trim(),
+            amount: amountNum,
+            category: category || "altro",
+            date: String(date).slice(0, 10),
+        }
+
+        onSubmit?.(payload)
     }
 
-    const inputBase =
-        "w-full rounded-xl border px-3 py-2 outline-none transition shadow-sm " +
-        "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]"
-
-    const selectBase =
-        "w-full rounded-xl border px-3 py-2 outline-none transition shadow-sm " +
-        "bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--fg))]"
-
-    const pillBase = "px-3 py-1.5 rounded-full text-xs border transition"
-    const muted = "text-[rgb(var(--muted-fg))]"
-    const card = "bg-[rgb(var(--card))] border-[rgb(var(--border))]"
-    const soft = "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+    const showAds = !isPremium && adsConsent !== "denied"
 
     return (
-        <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{transaction?.id ? "Modifica movimento" : "Nuovo movimento"}</DialogTitle>
-                </DialogHeader>
+        <AnimatePresence>
+            {isOpen ? (
+                <motion.div className="fixed inset-0 z-[80]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    {/* backdrop */}
+                    <div className="absolute inset-0 bg-black/60" onClick={handleClose} />
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className={`flex gap-2 p-1 rounded-2xl border ${soft}`}>
-                        <button
-                            type="button"
-                            onClick={() => setTypeSafe("uscita")}
-                            className={[
-                                "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition text-sm font-medium border",
-                                type === "uscita"
-                                    ? `bg-[rgb(var(--card))] border-[rgb(var(--border))] text-rose-700`
-                                    : `bg-transparent border-transparent ${muted} hover:bg-[rgb(var(--card))] hover:border-[rgb(var(--border))]`,
-                            ].join(" ")}
+                    {/* panel */}
+                    <div className="absolute inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4">
+                        <motion.div
+                            className="
+                w-full sm:max-w-lg
+                rounded-t-3xl sm:rounded-3xl
+                border border-[rgb(var(--border))]
+                bg-[rgb(var(--bg))]/90
+                backdrop-blur-2xl
+                shadow-2xl
+                overflow-hidden
+              "
+                            initial={{ y: 24, opacity: 0, scale: 0.98 }}
+                            animate={{ y: 0, opacity: 1, scale: 1 }}
+                            exit={{ y: 24, opacity: 0, scale: 0.98 }}
+                            transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            <Minus size={16} /> Uscita
-                        </button>
+                            <div className="pt-[env(safe-area-inset-top)]" />
 
-                        <button
-                            type="button"
-                            onClick={() => setTypeSafe("entrata")}
-                            className={[
-                                "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition text-sm font-medium border",
-                                type === "entrata"
-                                    ? `bg-[rgb(var(--card))] border-[rgb(var(--border))] text-emerald-700`
-                                    : `bg-transparent border-transparent ${muted} hover:bg-[rgb(var(--card))] hover:border-[rgb(var(--border))]`,
-                            ].join(" ")}
-                        >
-                            <Plus size={16} /> Entrata
-                        </button>
-                    </div>
+                            <div className="flex items-center justify-between gap-3 px-5 py-4">
+                                <div className="min-w-0">
+                                    <p className="text-xs text-[rgb(var(--muted-fg))]">HAIP</p>
+                                    <h2 className="text-lg font-extrabold tracking-tight truncate">{title}</h2>
+                                </div>
 
-                    <div className="flex flex-wrap gap-2">
-                        {pills.map((k) => {
-                            const selected = formData.category === k
-                            return (
                                 <button
-                                    key={k}
                                     type="button"
-                                    onClick={() => {
-                                        setError("")
-                                        setManualCategory(true)
-                                        setFormData((p) => ({ ...p, category: k }))
-                                    }}
-                                    className={[
-                                        pillBase,
-                                        selected
-                                            ? "bg-slate-900 text-white border-slate-900"
-                                            : `${card} ${muted} hover:bg-[rgb(var(--card-2))]`,
-                                    ].join(" ")}
+                                    onClick={handleClose}
+                                    className="h-10 w-10 shrink-0 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] hover:bg-[rgb(var(--card-2))]"
+                                    aria-label="Chiudi"
+                                    title="Chiudi"
                                 >
-                                    {getCategoryLabel(k)}
+                                    <X className="mx-auto h-5 w-5" />
                                 </button>
-                            )
-                        })}
+                            </div>
+
+                            <form onSubmit={handleSubmit} className="px-5 pb-5">
+                                {/* type */}
+                                <div className="mb-4 grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setType("entrata")}
+                                        className={[
+                                            "h-11 rounded-2xl border text-sm font-extrabold",
+                                            type === "entrata"
+                                                ? "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+                                                : "bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]",
+                                        ].join(" ")}
+                                    >
+                                        Entrata
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setType("uscita")}
+                                        className={[
+                                            "h-11 rounded-2xl border text-sm font-extrabold",
+                                            type === "uscita"
+                                                ? "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
+                                                : "bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]",
+                                        ].join(" ")}
+                                    >
+                                        Uscita
+                                    </button>
+                                </div>
+
+                                <div className="grid gap-3">
+                                    {/* descrizione */}
+                                    <label className="grid gap-1">
+                                        <span className="text-xs text-[rgb(var(--muted-fg))]">Descrizione</span>
+                                        <input
+                                            value={description}
+                                            onChange={(e) => setDescription(e.target.value)}
+                                            placeholder="Es. affitto, kebab, multa…"
+                                            className="
+                        h-12 w-full rounded-2xl
+                        border border-[rgb(var(--border))]
+                        bg-[rgb(var(--card))]/70
+                        px-4 text-[rgb(var(--fg))]
+                        outline-none
+                        placeholder:text-[rgb(var(--muted-fg))]
+                      "
+                                            autoComplete="off"
+                                        />
+                                    </label>
+
+                                    {/* amount + date */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <label className="grid gap-1">
+                                            <span className="text-xs text-[rgb(var(--muted-fg))]">Importo</span>
+                                            <input
+                                                value={amount}
+                                                onChange={(e) => setAmount(e.target.value)}
+                                                placeholder="0,00"
+                                                className="
+                          h-12 w-full rounded-2xl
+                          border border-[rgb(var(--border))]
+                          bg-[rgb(var(--card))]/70
+                          px-4 text-[rgb(var(--fg))]
+                          outline-none
+                          placeholder:text-[rgb(var(--muted-fg))]
+                        "
+                                                inputMode="decimal"
+                                                autoComplete="off"
+                                            />
+                                        </label>
+
+                                        <label className="grid gap-1">
+                                            <span className="text-xs text-[rgb(var(--muted-fg))]">Data</span>
+                                            <input
+                                                type="date"
+                                                value={date}
+                                                onChange={(e) => setDate(e.target.value)}
+                                                className="
+                          h-12 w-full rounded-2xl
+                          border border-[rgb(var(--border))]
+                          bg-[rgb(var(--card))]/70
+                          px-4 text-[rgb(var(--fg))]
+                          outline-none
+                        "
+                                            />
+                                        </label>
+                                    </div>
+
+                                    {/* future message */}
+                                    {isFuture ? (
+                                        <div className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card-2))]/80 px-4 py-3">
+                                            <p className="text-xs text-[rgb(var(--muted-fg))]">
+                                                Nota: i movimenti nel <b>futuro</b> si vedono in lista, ma <b>non influenzano</b> grafici e statistiche (30 giorni)
+                                                finché non diventano passato.
+                                            </p>
+                                        </div>
+                                    ) : null}
+
+                                    {/* category */}
+                                    <label className="grid gap-1">
+                                        <span className="text-xs text-[rgb(var(--muted-fg))]">Categoria</span>
+                                        <select
+                                            value={category}
+                                            onChange={(e) => setCategory(e.target.value)}
+                                            className="
+                        h-12 w-full rounded-2xl
+                        border border-[rgb(var(--border))]
+                        bg-[rgb(var(--card))]/70
+                        px-4 text-[rgb(var(--fg))]
+                        outline-none
+                      "
+                                        >
+                                            {categories.map((c) => (
+                                                <option key={c} value={c}>
+                                                    {c === "altro" ? "Altro" : c}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                </div>
+
+                                {/* actions */}
+                                <div className="mt-5 grid grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={handleClose}
+                                        className="h-12 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] hover:bg-[rgb(var(--card-2))] text-sm font-extrabold"
+                                    >
+                                        Annulla
+                                    </button>
+
+                                    <button
+                                        type="submit"
+                                        disabled={!canSubmit}
+                                        className={[
+                                            "h-12 rounded-2xl border text-sm font-extrabold",
+                                            canSubmit
+                                                ? "bg-[rgb(var(--fg))] text-[rgb(var(--bg))] border-[rgb(var(--fg))]"
+                                                : "bg-[rgb(var(--card))] text-[rgb(var(--muted-fg))] border-[rgb(var(--border))] opacity-70",
+                                        ].join(" ")}
+                                        title={!canSubmit ? "Completa descrizione/importo/data" : "Salva"}
+                                    >
+                                        {isLoading ? "Salvo…" : "Salva"}
+                                    </button>
+                                </div>
+
+                                {/* ✅ Ads in fondo: solo free */}
+                                {showAds ? (
+                                    <div className="mt-6">
+                                        <AdSlot placement="modal-new-transaction-bottom" isPremium={isPremium} adsConsent={adsConsent} />
+                                    </div>
+                                ) : null}
+
+                                <div className="pb-[env(safe-area-inset-bottom)]" />
+                            </form>
+                        </motion.div>
                     </div>
-
-                    <input
-                        className={inputBase}
-                        value={formData.description}
-                        onChange={(e) => {
-                            setError("")
-                            setFormData((p) => ({ ...p, description: e.target.value }))
-                        }}
-                        placeholder="Descrizione"
-                        autoFocus
-                    />
-
-                    <div className="grid grid-cols-2 gap-2">
-                        <input
-                            className={inputBase}
-                            value={formData.amount}
-                            onChange={(e) => {
-                                setError("")
-                                setFormData((p) => ({ ...p, amount: e.target.value }))
-                            }}
-                            placeholder="Importo"
-                            inputMode="decimal"
-                        />
-                        <input
-                            className={inputBase}
-                            type="date"
-                            value={formData.date}
-                            onChange={(e) => {
-                                setError("")
-                                setFormData((p) => ({ ...p, date: e.target.value }))
-                            }}
-                        />
-                    </div>
-
-                    <select
-                        className={selectBase}
-                        value={formData.category}
-                        onChange={(e) => {
-                            setError("")
-                            setManualCategory(true)
-                            setFormData((p) => ({ ...p, category: e.target.value }))
-                        }}
-                    >
-                        {categoryKeysForType.map((key) => (
-                            <option key={key} value={key}>
-                                {getCategoryLabel(key)}
-                            </option>
-                        ))}
-                    </select>
-
-                    {error && (
-                        <div className="rounded-xl border px-3 py-2 text-sm bg-rose-50 text-rose-800 border-rose-200">
-                            {error}
-                        </div>
-                    )}
-
-                    {/* ✅ ADS non invadente in fondo alla modale */}
-                    <div className="pt-2">
-                        <div className="min-h-[72px]">
-                            <AdSlot
-                                isPremium={isPremium}
-                                adsConsent={adsConsent}
-                                placement="modal-new-transaction-bottom"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex gap-2 pt-1">
-                        <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
-                            Annulla
-                        </Button>
-                        <Button type="submit" className="flex-1" disabled={isLoading}>
-                            {transaction?.id ? "Salva" : "Aggiungi"}
-                        </Button>
-                    </div>
-                </form>
-            </DialogContent>
-        </Dialog>
+                </motion.div>
+            ) : null}
+        </AnimatePresence>
     )
 }

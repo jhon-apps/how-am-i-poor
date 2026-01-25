@@ -12,6 +12,7 @@ import Profile from "@/pages/Profile"
 import Notifications from "@/pages/Notifications"
 import Tutorial from "@/pages/Tutorial"
 import About from "@/pages/About"
+import DevTools from "@/pages/DevTools"
 
 const ONBOARDING_KEY = "howamipoor:onboardingDone:v1"
 
@@ -50,6 +51,7 @@ function getRouteFromHash() {
     if (h.startsWith("#/notifications")) return "notifications"
     if (h.startsWith("#/tutorial")) return "tutorial"
     if (h.startsWith("#/about")) return "about"
+    if (h.startsWith("#/dev")) return "dev"
 
     return "home"
 }
@@ -90,32 +92,27 @@ export default function App() {
 
     useEffect(() => {
         let remove = null
-        let AppPlugin = null
-        let Capacitor = null
 
         const setup = async () => {
             try {
                 const core = await import("@capacitor/core")
-                Capacitor = core.Capacitor
+                const { Capacitor } = core
                 if (!Capacitor.isNativePlatform()) return
 
                 const app = await import("@capacitor/app")
-                AppPlugin = app.App
+                const AppPlugin = app.App
 
                 const sub = AppPlugin.addListener("backButton", () => {
-                    // 1) chiudi modale SOLO se siamo in Home
                     if (route === "home" && typeof homeCloseNewTxModalRef.current === "function") {
                         homeCloseNewTxModalRef.current()
                         return
                     }
 
-                    // 2) qualsiasi pagina ≠ home → torna home
                     if (route !== "home") {
                         nav("/", { replace: true })
                         return
                     }
 
-                    // 3) siamo in home: doppio back → minimize
                     if (backArmedRef.current) {
                         try {
                             AppPlugin.minimizeApp()
@@ -171,6 +168,7 @@ export default function App() {
         if (route === "notifications") return <Notifications />
         if (route === "tutorial") return <Tutorial />
         if (route === "about") return <About />
+        if (route === "dev") return <DevTools />
 
         return (
             <Home

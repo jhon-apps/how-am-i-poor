@@ -21,10 +21,14 @@ import GlobalTopBar from "@/components/layout/GlobalTopBar"
 
 const PREMIUM_EVENT = "haip:openPremium"
 
+/**
+ * ✅ Ultimi N giorni = SOLO PASSATO
+ */
 function isWithinLastDays(dateISO, days) {
     const d = new Date(dateISO)
     if (Number.isNaN(d.getTime())) return false
     const diff = Date.now() - d.getTime()
+    if (diff < 0) return false
     return diff <= days * 24 * 60 * 60 * 1000
 }
 
@@ -75,7 +79,6 @@ export default function Insights() {
         }
     }, [undoTimer])
 
-    // ✅ ascolta premium click dalla topbar/menu (evento globale)
     useEffect(() => {
         const onPremium = (e) => {
             const reason = e?.detail?.reason || "premium"

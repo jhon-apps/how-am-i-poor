@@ -45,10 +45,15 @@ function formatEUR(n) {
     return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(Number(n) || 0)
 }
 
+/**
+ * ✅ Ultimi N giorni = SOLO PASSATO:
+ * include solo date con diffMs in [0 .. N giorni]
+ */
 function isWithinLastDays(dateISO, days) {
     const d = new Date(dateISO)
     if (Number.isNaN(d.getTime())) return false
     const diff = Date.now() - d.getTime()
+    if (diff < 0) return false // futuro → escluso
     return diff <= days * 24 * 60 * 60 * 1000
 }
 
@@ -90,7 +95,6 @@ export default function Home({ registerCloseNewTxModal }) {
     const [premiumHubOpen, setPremiumHubOpen] = useState(false)
     const [billingNotReadyOpen, setBillingNotReadyOpen] = useState(false)
 
-    // (Home non elimina, quindi undo toast resta spento ma non lo tolgo per compatibilità)
     const [undoOpen, setUndoOpen] = useState(false)
 
     const openPremium = (reason) => {
@@ -105,7 +109,6 @@ export default function Home({ registerCloseNewTxModal }) {
         setIsModalOpen(true)
     }
 
-    // recent categories per modal
     const recentCategories = useMemo(() => {
         const uniq = []
         for (const t of transactions) {
@@ -117,7 +120,6 @@ export default function Home({ registerCloseNewTxModal }) {
         return uniq
     }, [transactions])
 
-    // back Android: chiudi modale se aperta
     useEffect(() => {
         if (!registerCloseNewTxModal) return
 
@@ -135,7 +137,6 @@ export default function Home({ registerCloseNewTxModal }) {
         return () => registerCloseNewTxModal(null)
     }, [isModalOpen, registerCloseNewTxModal])
 
-    // pending action da notifica ricorrente → apre modale prefill
     useEffect(() => {
         const run = () => {
             const p = consumePendingAction()
@@ -175,7 +176,6 @@ export default function Home({ registerCloseNewTxModal }) {
 
     return (
         <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
-            {/* ✅ Header unico, come tutte le altre pagine */}
             <GlobalTopBar page="Home" onPremium={() => openPremium("premium")} />
 
             <main className="px-4 pb-10 pt-2">
@@ -268,7 +268,6 @@ export default function Home({ registerCloseNewTxModal }) {
                 isLoading={false}
             />
 
-            {/* Home non fa delete, quindi non appare; lo tengo per compatibilità */}
             <UndoToast open={undoOpen} message="Movimento eliminato." onUndo={() => {}} onClose={() => setUndoOpen(false)} />
 
             <PremiumUpsellDialog
