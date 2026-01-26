@@ -25,10 +25,27 @@ function fmtEUR(n) {
     return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(Number(n) || 0)
 }
 
-function clampDay(v) {
+function normalizeAmountInput(raw) {
+    return String(raw ?? "").trim().replace(/\s/g, "").replace(",", ".")
+}
+
+function parseAmountStrict(raw) {
+    const s = normalizeAmountInput(raw)
+    if (!s) return { ok: false, value: null, reason: "empty" }
+    if (!/^-?\d+(\.\d{0,2})?$/.test(s)) return { ok: false, value: null, reason: "format" }
+    const n = Number(s)
+    if (!Number.isFinite(n)) return { ok: false, value: null, reason: "nan" }
+    const v = Math.round(Math.abs(n) * 100) / 100
+    if (v <= 0) return { ok: false, value: null, reason: "zero" }
+    return { ok: true, value: v, reason: null }
+}
+
+function clampInt(v, min, max) {
     const n = Number(v)
-    if (!Number.isFinite(n)) return 1
-    return Math.min(31, Math.max(1, Math.trunc(n)))
+    if (!Number.isFinite(n)) return null
+    const t = Math.trunc(n)
+    if (t < min || t > max) return null
+    return t
 }
 
 function RecurringForm({ initial, onCancel, onSave }) {
@@ -37,8 +54,13 @@ function RecurringForm({ initial, onCancel, onSave }) {
 
     const [type, setType] = useState(initial?.type ?? "uscita")
     const [description, setDescription] = useState(initial?.description ?? "")
-    const [amount, setAmount] = useState(initial?.amount ?? "")
+    const [amount, setAmount] = useState(initial?.amount != null ? String(initial.amount).replace(".", ",") : "")
     const [day, setDay] = useState(initial?.schedule?.day ?? 1)
+
+    // touched flags
+    const [tDesc, setTDesc] = useState(false)
+    const [tAmount, setTAmount] = useState(false)
+    const [tDay, setTDay] = useState(false)
 
     const categoriesForType = useMemo(() => getCategoriesByType(type), [type])
 
@@ -59,25 +81,58 @@ function RecurringForm({ initial, onCancel, onSave }) {
     const [notifyTime, setNotifyTime] = useState(initial?.notify?.time ?? "09:00")
     const [daysBefore, setDaysBefore] = useState(initial?.notify?.daysBefore ?? 0)
 
+    const descOk = useMemo(() => String(description || "").trim().length > 0, [description])
+    const amountParsed = useMemo(() => parseAmountStrict(amount), [amount])
+    const dayInt = useMemo(() => clampInt(day, 1, 31), [day])
+    const dayOk = useMemo(() => dayInt != null, [dayInt])
+
+    const daysBeforeClamped = useMemo(() => {
+        const n = Number(daysBefore)
+        if (!Number.isFinite(n)) return 0
+        return Math.min(7, Math.max(0, Math.trunc(n)))
+    }, [daysBefore])
+
+    const canSubmit = useMemo(() => {
+        if (!descOk) return false
+        if (!amountParsed.ok) return false
+        if (!dayOk) return false
+        return true
+    }, [descOk, amountParsed.ok, dayOk])
+
+    const amountErrorText = useMemo(() => {
+        if (amountParsed.ok) return ""
+        if (amountParsed.reason === "empty") return "Inserisci un importo."
+        if (amountParsed.reason === "format") return "Formato non valido. Usa 12,34 oppure 12.34"
+        if (amountParsed.reason === "zero") return "L’importo deve essere > 0."
+        return "Importo non valido."
+    }, [amountParsed])
+
     const submit = () => {
-        const parsed = Number(String(amount).replace(",", "."))
-        const cleanAmount = Number.isFinite(parsed) ? Math.abs(parsed) : 0
+        // forza touched per mostrare errori se prova a salvare
+        setTDesc(true)
+        setTAmount(true)
+        setTDay(true)
+
+        if (!canSubmit) return
 
         onSave?.({
             ...(initial?.id ? { id: initial.id } : {}),
             type,
             description: String(description).trim(),
-            amount: cleanAmount,
+            amount: amountParsed.value,
             category,
-            schedule: { freq: "monthly", day: clampDay(day) },
+            schedule: { freq: "monthly", day: dayInt },
             notify: {
                 enabled: !!notifyEnabled,
                 time: String(notifyTime).slice(0, 5),
-                daysBefore: Math.min(7, Math.max(0, Number(daysBefore) || 0)),
+                daysBefore: daysBeforeClamped,
             },
             active: initial?.active !== false,
         })
     }
+
+    const inputBase = "w-full rounded-xl border px-3 py-2 bg-[rgb(var(--card))] border-[rgb(var(--border))] outline-none"
+    const badBorder = "border-red-500/60"
 
     return (
         <div className="space-y-4">
@@ -105,9 +160,11 @@ function RecurringForm({ initial, onCancel, onSave }) {
                 <input
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full rounded-xl border px-3 py-2 bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+                    onBlur={() => setTDesc(true)}
+                    className={[inputBase, tDesc && !descOk ? badBorder : ""].join(" ")}
                     placeholder="Es. Netflix"
                 />
+                {tDesc && !descOk ? <p className="text-xs text-red-400">Inserisci una descrizione.</p> : null}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -116,10 +173,12 @@ function RecurringForm({ initial, onCancel, onSave }) {
                     <input
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
+                        onBlur={() => setTAmount(true)}
                         inputMode="decimal"
-                        className="w-full rounded-xl border px-3 py-2 bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+                        className={[inputBase, tAmount && !amountParsed.ok ? badBorder : ""].join(" ")}
                         placeholder="7,00"
                     />
+                    {tAmount && !amountParsed.ok ? <p className="text-xs text-red-400">{amountErrorText}</p> : null}
                 </div>
 
                 <div className={soft + " p-3 space-y-2"}>
@@ -127,7 +186,7 @@ function RecurringForm({ initial, onCancel, onSave }) {
                     <select
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
-                        className="w-full rounded-xl border px-3 py-2 bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+                        className={inputBase}
                     >
                         {categoriesForType.map((c) => (
                             <option key={c.key} value={c.key}>
@@ -148,9 +207,11 @@ function RecurringForm({ initial, onCancel, onSave }) {
                         max={31}
                         value={day}
                         onChange={(e) => setDay(e.target.value)}
-                        className="w-20 rounded-xl border px-3 py-2 bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+                        onBlur={() => setTDay(true)}
+                        className={[ "w-20 rounded-xl border px-3 py-2 bg-[rgb(var(--card))] border-[rgb(var(--border))] outline-none", tDay && !dayOk ? badBorder : ""].join(" ")}
                     />
                 </div>
+                {tDay && !dayOk ? <p className="text-xs text-red-400">Inserisci un giorno valido (1–31).</p> : null}
             </div>
 
             <div className={soft + " p-3 space-y-3"}>
@@ -174,7 +235,7 @@ function RecurringForm({ initial, onCancel, onSave }) {
                             type="time"
                             value={notifyTime}
                             onChange={(e) => setNotifyTime(e.target.value)}
-                            className="mt-2 w-full rounded-xl border px-3 py-2 bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+                            className={"mt-2 " + inputBase}
                             disabled={!notifyEnabled}
                         />
                     </div>
@@ -187,9 +248,12 @@ function RecurringForm({ initial, onCancel, onSave }) {
                             max={7}
                             value={daysBefore}
                             onChange={(e) => setDaysBefore(e.target.value)}
-                            className="mt-2 w-full rounded-xl border px-3 py-2 bg-[rgb(var(--card))] border-[rgb(var(--border))]"
+                            className={"mt-2 " + inputBase}
                             disabled={!notifyEnabled}
                         />
+                        {notifyEnabled && Number(daysBefore) !== daysBeforeClamped ? (
+                            <p className={`mt-1 text-xs ${muted}`}>Valore applicato: {daysBeforeClamped} (max 7)</p>
+                        ) : null}
                     </div>
                 </div>
             </div>
@@ -198,7 +262,7 @@ function RecurringForm({ initial, onCancel, onSave }) {
                 <Button variant="outline" onClick={onCancel} type="button">
                     Annulla
                 </Button>
-                <Button onClick={submit} type="button">
+                <Button onClick={submit} type="button" disabled={!canSubmit}>
                     Salva
                 </Button>
             </div>
@@ -233,7 +297,6 @@ export default function Recurring() {
     const [hubOpen, setHubOpen] = useState(false)
     const [billingNotReadyOpen, setBillingNotReadyOpen] = useState(false)
 
-    // ✅ premium via topbar/menu
     useEffect(() => {
         const onPremium = () => setUpsellOpen(true)
         window.addEventListener(PREMIUM_EVENT, onPremium)
@@ -295,17 +358,8 @@ export default function Recurring() {
                     </div>
                 </main>
 
-                <PremiumUpsellDialog
-                    open={upsellOpen}
-                    onClose={() => setUpsellOpen(false)}
-                    onConfirm={() => setHubOpen(true)}
-                    reason="premium"
-                />
-                <PremiumHub
-                    open={hubOpen}
-                    onClose={() => setHubOpen(false)}
-                    onBillingNotReady={() => setBillingNotReadyOpen(true)}
-                />
+                <PremiumUpsellDialog open={upsellOpen} onClose={() => setUpsellOpen(false)} onConfirm={() => setHubOpen(true)} reason="premium" />
+                <PremiumHub open={hubOpen} onClose={() => setHubOpen(false)} onBillingNotReady={() => setBillingNotReadyOpen(true)} />
                 <BillingNotReadyDialog open={billingNotReadyOpen} onClose={() => setBillingNotReadyOpen(false)} />
             </div>
         )
@@ -447,12 +501,7 @@ export default function Recurring() {
                 )}
             </main>
 
-            <PremiumUpsellDialog
-                open={upsellOpen}
-                onClose={() => setUpsellOpen(false)}
-                onConfirm={() => setHubOpen(true)}
-                reason="premium"
-            />
+            <PremiumUpsellDialog open={upsellOpen} onClose={() => setUpsellOpen(false)} onConfirm={() => setHubOpen(true)} reason="premium" />
             <PremiumHub open={hubOpen} onClose={() => setHubOpen(false)} onBillingNotReady={() => setBillingNotReadyOpen(true)} />
             <BillingNotReadyDialog open={billingNotReadyOpen} onClose={() => setBillingNotReadyOpen(false)} />
 
