@@ -1,19 +1,43 @@
+import { useEffect } from "react"
 import { BadgeCheck, Lock, Search, CalendarClock, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import usePremium from "@/hooks/usePremium"
 
-/**
- * PremiumContent = UNICA sorgente di verità per:
- * - variabili di stato premium (usePremium)
- * - logica subscribe/cta/billingNotReady/dev disable
- * - UI identica
- *
- * mode:
- * - "modal": overlay + onClose richiesto (chiusura modale)
- * - "page": full page (no overlay), close → torna Home (hash "#/")
- */
 export default function PremiumContent({ mode = "modal", onClose, onBillingNotReady }) {
     const { isPremium, requestPremium, meta, disablePremium } = usePremium()
+
+    // Scroll lock SOLO quando è modale
+    useEffect(() => {
+        if (mode !== "modal") return
+
+        const body = document.body
+        const html = document.documentElement
+
+        const prevBodyOverflow = body.style.overflow
+        const prevBodyPosition = body.style.position
+        const prevBodyTop = body.style.top
+        const prevBodyWidth = body.style.width
+        const prevHtmlOverscroll = html.style.overscrollBehaviorY
+
+        const scrollY = window.scrollY || 0
+
+        body.style.overflow = "hidden"
+        body.style.position = "fixed"
+        body.style.top = `-${scrollY}px`
+        body.style.width = "100%"
+        html.style.overscrollBehaviorY = "none"
+
+        return () => {
+            body.style.overflow = prevBodyOverflow
+            body.style.position = prevBodyPosition
+            body.style.top = prevBodyTop
+            body.style.width = prevBodyWidth
+            html.style.overscrollBehaviorY = prevHtmlOverscroll
+
+            const y = Math.abs(parseInt(body.style.top || "0", 10)) || scrollY
+            window.scrollTo(0, y)
+        }
+    }, [mode])
 
     const card = "bg-[rgb(var(--card))] border-[rgb(var(--border))]"
     const soft = "bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
@@ -42,7 +66,7 @@ export default function PremiumContent({ mode = "modal", onClose, onBillingNotRe
 
     const wrapClass =
         mode === "modal"
-            ? "fixed inset-0 z-50 bg-black/60"
+            ? "fixed inset-0 z-[80] bg-black/60"
             : "min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]"
 
     const innerClass =
@@ -51,10 +75,12 @@ export default function PremiumContent({ mode = "modal", onClose, onBillingNotRe
             : "max-w-3xl mx-auto px-4 pb-10 text-[rgb(var(--fg))]"
 
     return (
-        <div className={wrapClass}>
+        <div className={wrapClass} onClick={mode === "modal" ? handleClose : undefined}>
             <div
                 className={innerClass}
                 style={mode === "page" ? { paddingTop: "max(env(safe-area-inset-top), 24px)" } : undefined}
+                onClick={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between mb-6">
                     <h1 className="text-xl font-extrabold">Premium</h1>
@@ -105,8 +131,8 @@ export default function PremiumContent({ mode = "modal", onClose, onBillingNotRe
 
                         {isPremium ? (
                             <span className="text-emerald-700 font-semibold">
-                                Premium attivo ✓ <span className={`ml-2 text-xs ${muted}`}>({meta.source})</span>
-                            </span>
+                Premium attivo ✓ <span className={`ml-2 text-xs ${muted}`}>({meta.source})</span>
+              </span>
                         ) : (
                             <Button onClick={handleSubscribe}>
                                 <p className="text-amber-300">Sblocca Premium</p>
@@ -114,7 +140,7 @@ export default function PremiumContent({ mode = "modal", onClose, onBillingNotRe
                         )}
                     </div>
 
-                    {meta.canSimulate && isPremium && (
+                    {meta?.canSimulate && isPremium && (
                         <div className="flex justify-end">
                             <Button variant="outline" onClick={disablePremium}>
                                 Disattiva Premium (DEV)
@@ -123,7 +149,7 @@ export default function PremiumContent({ mode = "modal", onClose, onBillingNotRe
                     )}
 
                     <div className={`pt-4 text-center text-xs ${muted} space-y-2`}>
-                        {!meta.billingReady && <p>Billing non ancora attivo in questa versione.</p>}
+                        {!meta?.billingReady && <p>Billing non ancora attivo in questa versione.</p>}
                         <a
                             href="https://jhon-apps.github.io/how-am-i-poor/privacy.html"
                             target="_blank"

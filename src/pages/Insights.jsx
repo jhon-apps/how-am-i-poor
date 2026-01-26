@@ -11,6 +11,7 @@ import PremiumUpsellDialog from "@/components/ui/PremiumUpsellDialog"
 import BillingNotReadyDialog from "@/components/ui/BillingNotReadyDialog"
 import PremiumHub from "@/components/premium/PremiumHub"
 import AdSlot from "@/components/ads/AdSlot"
+import ConfirmDeleteDialog from "@/components/ui/ConfirmDeleteDialog"
 
 import useTransactions from "@/hooks/useTransactions"
 import usePremium from "@/hooks/usePremium"
@@ -21,9 +22,6 @@ import GlobalTopBar from "@/components/layout/GlobalTopBar"
 
 const PREMIUM_EVENT = "haip:openPremium"
 
-/**
- * ✅ Ultimi N giorni = SOLO PASSATO
- */
 function isWithinLastDays(dateISO, days) {
     const d = new Date(dateISO)
     if (Number.isNaN(d.getTime())) return false
@@ -47,8 +45,8 @@ export default function Insights() {
 
     const { transactions, isLoading, add, update, remove, restore } = useTransactions()
 
-    const [leftView, setLeftView] = useState("chart") // chart | breakdown
-    const [chartRange, setChartRange] = useState("30d") // 30d | all
+    const [leftView, setLeftView] = useState("chart")
+    const [chartRange, setChartRange] = useState("30d")
     const effectiveRange = canUseAllRange(isPremium) ? chartRange : "30d"
 
     const [query, setQuery] = useState("")
@@ -57,10 +55,16 @@ export default function Insights() {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingTx, setEditingTx] = useState(null)
 
+    // ✅ confirm delete
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+    const [pendingDeleteId, setPendingDeleteId] = useState(null)
+
+    // undo
     const [undoOpen, setUndoOpen] = useState(false)
     const [lastDeleted, setLastDeleted] = useState(null)
     const [undoTimer, setUndoTimer] = useState(null)
 
+    // premium
     const [premiumUpsellOpen, setPremiumUpsellOpen] = useState(false)
     const [premiumReason, setPremiumReason] = useState("premium")
     const [premiumHubOpen, setPremiumHubOpen] = useState(false)
@@ -139,10 +143,28 @@ export default function Insights() {
         setIsModalOpen(true)
     }
 
-    const handleDelete = (id) => {
+    // ✅ ora il delete apre conferma
+    const handleDeleteRequest = (id) => {
         const tx = transactions.find((t) => t.id === id)
         if (!tx) return
         if (isLockedTransaction(tx, isPremium)) return openPremium("history")
+
+        setPendingDeleteId(id)
+        setDeleteConfirmOpen(true)
+    }
+
+    const confirmDelete = () => {
+        const id = pendingDeleteId
+        if (!id) {
+            setDeleteConfirmOpen(false)
+            return
+        }
+
+        const tx = transactions.find((t) => t.id === id)
+        setDeleteConfirmOpen(false)
+        setPendingDeleteId(null)
+
+        if (!tx) return
 
         remove(id)
         setLastDeleted(tx)
@@ -156,6 +178,11 @@ export default function Insights() {
         setUndoTimer(t)
     }
 
+    const cancelDelete = () => {
+        setDeleteConfirmOpen(false)
+        setPendingDeleteId(null)
+    }
+
     const handleUndo = () => {
         if (!lastDeleted) return
         if (undoTimer) clearTimeout(undoTimer)
@@ -166,6 +193,11 @@ export default function Insights() {
 
     const muted = "text-[rgb(var(--muted-fg))]"
     const canSearch = canSearchTransactions(isPremium)
+
+    const pendingTx = pendingDeleteId ? transactions.find((t) => t.id === pendingDeleteId) : null
+    const confirmMsg = pendingTx
+        ? `Eliminare "${pendingTx.description || "movimento"}" (${pendingTx.date})?`
+        : "Vuoi eliminare questo movimento?"
 
     return (
         <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
@@ -294,7 +326,7 @@ export default function Insights() {
                                 <>
                                     <TransactionList
                                         transactions={unlocked}
-                                        onDelete={handleDelete}
+                                        onDelete={handleDeleteRequest}
                                         onEdit={handleEdit}
                                         isPremium={isPremium}
                                         onPremium={openPremium}
@@ -367,6 +399,17 @@ export default function Insights() {
                     setEditingTx(null)
                 }}
                 isLoading={false}
+            />
+
+            {/* ✅ nuova conferma eliminazione */}
+            <ConfirmDeleteDialog
+                open={deleteConfirmOpen}
+                title="Eliminare movimento?"
+                message={confirmMsg}
+                confirmText="Elimina"
+                cancelText="Annulla"
+                onConfirm={confirmDelete}
+                onCancel={cancelDelete}
             />
 
             <UndoToast

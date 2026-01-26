@@ -1,6 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowLeft, ArrowRight, Bell, Check, Lock, PieChart, Sparkles, Wallet } from "lucide-react"
+import {
+    ArrowLeft,
+    ArrowRight,
+    Bell,
+    Check,
+    Lock,
+    PieChart,
+    Sparkles,
+    Wallet,
+    Plus,
+    ArrowUpRight,
+    ArrowDownRight,
+    Target,
+    AlarmClock,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const USER_KEY = "howamipoor:user:v1"
@@ -25,6 +39,186 @@ function markOnboardingDone() {
     localStorage.setItem(ONBOARDING_KEY, JSON.stringify({ done: true, ts: Date.now() }))
 }
 
+/* ------------------ SAMPLE UI BLOCKS ------------------ */
+function SampleCard({ title = "Sample", children, soft, muted }) {
+    return (
+        <div className={`mt-6 rounded-3xl border p-4 ${soft}`}>
+            <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-extrabold tracking-tight uppercase">{title}</p>
+                <span className={`text-[11px] ${muted}`}>sample</span>
+            </div>
+            <div className="mt-3">{children}</div>
+        </div>
+    )
+}
+
+function SampleHint({ children, muted }) {
+    return (
+        <div className={`mt-3 rounded-2xl border px-3 py-2 text-xs ${muted}`}>
+            {children}
+        </div>
+    )
+}
+
+function SampleIncomeExpenseTiles({ soft }) {
+    return (
+        <div className="grid grid-cols-2 gap-3">
+            <div className={`rounded-3xl border p-4 ${soft}`}>
+                <div className="flex items-start justify-between gap-2">
+                    <div>
+                        <p className="text-xs tracking-wide">ENTRATE</p>
+                        <p className="mt-2 text-lg font-extrabold text-emerald-400">3.250,00 €</p>
+                    </div>
+                    <div className={`h-10 w-10 rounded-2xl border ${soft} flex items-center justify-center`}>
+                        <ArrowUpRight className="h-5 w-5 text-emerald-400" />
+                    </div>
+                </div>
+            </div>
+
+            <div className={`rounded-3xl border p-4 ${soft}`}>
+                <div className="flex items-start justify-between gap-2">
+                    <div>
+                        <p className="text-xs tracking-wide">USCITE</p>
+                        <p className="mt-2 text-lg font-extrabold text-rose-400">1.120,00 €</p>
+                    </div>
+                    <div className={`h-10 w-10 rounded-2xl border ${soft} flex items-center justify-center`}>
+                        <ArrowDownRight className="h-5 w-5 text-rose-400" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function SampleAddAction({ soft, muted }) {
+    return (
+        <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+                <p className="text-sm font-extrabold tracking-tight">Entrate / Uscite</p>
+                <p className={`text-xs ${muted}`}>Aprono la modale “Nuovo movimento”.</p>
+            </div>
+            <div className={`h-11 w-11 rounded-full border ${soft} flex items-center justify-center`}>
+                <Plus className="h-5 w-5" />
+            </div>
+        </div>
+    )
+}
+
+function SampleFutureBadge({ soft, muted }) {
+    return (
+        <div className={`rounded-3xl border p-4 ${soft}`}>
+            <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="text-sm font-extrabold">Netflix</p>
+                    <p className={`text-xs ${muted}`}>2026-02-10 • intrattenimento</p>
+                </div>
+
+                <span
+                    className="
+                        inline-flex items-center gap-1
+                        rounded-full border border-[rgb(var(--border))]
+                        bg-[rgb(var(--card))]
+                        px-2 py-0.5
+                        text-[10px] font-extrabold
+                        text-[rgb(var(--muted-fg))]
+                        shrink-0
+                    "
+                    title="Movimento futuro"
+                >
+                    <AlarmClock className="h-3 w-3" />
+                    FUTURO
+                </span>
+            </div>
+
+            <p className={`mt-3 text-xs ${muted}`}>
+                Si vede in lista, ma <b>non entra</b> in grafici/statistiche finché non diventa passato.
+            </p>
+        </div>
+    )
+}
+
+function SampleGoal30d({ soft, muted }) {
+    return (
+        <div className={`rounded-3xl border p-4 ${soft}`}>
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                    <div className={`h-10 w-10 rounded-2xl border ${soft} flex items-center justify-center shrink-0`}>
+                        <Target className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-sm font-extrabold">Obiettivo 30 giorni</p>
+                        <p className={`text-xs ${muted}`}>Basato sulle spese (solo passato).</p>
+                    </div>
+                </div>
+                <span className={`text-xs ${muted}`}>gratis</span>
+            </div>
+
+            <div className="mt-3">
+                <p className="text-sm font-extrabold">Speso: 742€ / 900€</p>
+                <div className="mt-2 h-3 rounded-full border border-[rgb(var(--border))] bg-[rgb(var(--card))] overflow-hidden">
+                    <div className="h-full bg-amber-400/70" style={{ width: "82%" }} />
+                </div>
+                <p className={`mt-2 text-xs ${muted}`}>“Stai iniziando a sudare.”</p>
+            </div>
+        </div>
+    )
+}
+
+function SamplePieAndList({ soft, muted }) {
+    return (
+        <div className="grid gap-3">
+            <div className={`rounded-3xl border p-4 ${soft}`}>
+                <div className="flex items-center gap-2">
+                    <PieChart className="h-4 w-4" />
+                    <p className="text-sm font-extrabold">Torta spese</p>
+                </div>
+                <div className="mt-3 flex items-center justify-center">
+                    <div className="h-20 w-20 rounded-full border border-[rgb(var(--border))] relative">
+                        <div className="absolute inset-1 rounded-full border border-[rgb(var(--border))]" />
+                    </div>
+                </div>
+                <p className={`mt-2 text-xs ${muted} text-center`}>Categorie ordinate sotto.</p>
+            </div>
+
+            <div className={`rounded-3xl border p-4 ${soft}`}>
+                <p className="text-sm font-extrabold">Categorie</p>
+                <div className="mt-2 space-y-2">
+                    {[
+                        ["Alimentari", "42%"],
+                        ["Trasporti", "23%"],
+                        ["Bollette", "17%"],
+                    ].map(([k, v]) => (
+                        <div
+                            key={k}
+                            className="flex items-center justify-between rounded-2xl border border-[rgb(var(--border))] px-3 py-2"
+                        >
+                            <span className="text-sm font-semibold">{k}</span>
+                            <span className={`text-xs ${muted}`}>{v}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function SamplePremium({ soft, muted }) {
+    return (
+        <div className={`rounded-3xl border p-4 ${soft}`}>
+            <p className="text-sm font-extrabold">Premium</p>
+            <p className={`mt-1 text-xs ${muted}`}>Sblocca storico + ricerca + ricorrenti.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+                {["Storico completo", "Ricerca", "Ricorrenti", "Grafico Tutto"].map((x) => (
+                    <span key={x} className="rounded-full border border-[rgb(var(--border))] px-3 py-1 text-xs">
+                        {x}
+                    </span>
+                ))}
+            </div>
+        </div>
+    )
+}
+/* ----------------------------------------------------- */
+
 export default function Onboarding({ onFinish, mode = "firstRun" }) {
     const [step, setStep] = useState(0)
     const [name, setName] = useState(readUserName())
@@ -48,6 +242,7 @@ HAIP ti mostra la verità.
 
 E tu puoi continuare a fare finta di niente… finché il conto regge.`,
                 bullets: ["Tutto resta sul telefono", "Panoramica pulita", "Zero scuse, zero autoinganni"],
+                sample: null,
             },
             {
                 key: "name",
@@ -57,6 +252,7 @@ E tu puoi continuare a fare finta di niente… finché il conto regge.`,
                 body: `Userò il tuo nome nei messaggi e nelle notifiche.
 Puoi lasciarlo vuoto, ma poi non lamentarti se ti chiamo "campione".`,
                 input: true,
+                sample: null,
             },
             {
                 key: "balance-scope",
@@ -65,18 +261,19 @@ Puoi lasciarlo vuoto, ma poi non lamentarti se ti chiamo "campione".`,
                 icon: Wallet,
                 body: `Il saldo può mostrarti due cose diverse.
 
-                • Totale: tutto quello che hai fatto finora. Sì, anche gli errori lontani.
-                • 30 giorni: solo l’ultimo mese. Per capire come stai andando adesso.
-                
-                In alto trovi un bottone che cambia vista:
-                toccalo e il saldo si aggiorna subito.
-                
-                Solo numeri che cambiano prospettiva.`,
-                                bullets: [
+• Totale: tutto quello che hai fatto finora. Sì, anche gli errori lontani.
+• 30 giorni: solo l’ultimo mese. Per capire come stai andando adesso.
+
+In alto trovi un bottone che cambia vista:
+tocc        alo e il saldo si aggiorna subito.
+
+Solo numeri che cambiano prospettiva.`,
+                bullets: [
                     "Un solo bottone, una vista alla volta",
                     "Saldo e messaggi sempre coerenti",
                     "Serve a capire se stai migliorando… o no (difficile)",
                 ],
+                sample: "balance",
             },
             {
                 key: "how",
@@ -90,6 +287,7 @@ Nella schermata iniziale vedi solo gli ultimi 5: ordine, non caos.`,
                     "Annulla eliminazione (per 5 secondi)",
                     "Schermata iniziale = essenziale",
                 ],
+                sample: "add",
             },
             {
                 key: "insights",
@@ -101,6 +299,7 @@ Nella versione gratuita ti mostro gli ultimi 30 giorni.
 
 Se vuoi guardare tutto lo storico (e farti male davvero)… ci arriviamo tra poco.`,
                 bullets: ["Riepilogo spese", "Dettaglio per categoria", "Ultimi 30 giorni nella versione gratuita"],
+                sample: "insights",
             },
             {
                 key: "premium",
@@ -126,6 +325,7 @@ Traduzione: ${chiamata}, con Premium non hai più scuse. Solo numeri.`,
                     "Grafico su tutto",
                 ],
                 footerNote: true,
+                sample: "premium",
             },
         ]
     }, [name])
@@ -215,13 +415,10 @@ Traduzione: ${chiamata}, con Premium non hai più scuse. Solo numeri.`,
                         exit={{ opacity: 0, x: -24 }}
                         transition={{ duration: 0.22 }}
                     >
-                        {/* scroll interno */}
                         <div className="h-full overflow-y-auto px-4 py-6">
                             <div className="mx-auto max-w-md">
                                 <div className="flex items-start gap-4">
-                                    <div
-                                        className={`h-12 w-12 rounded-2xl border ${soft} flex items-center justify-center shrink-0`}
-                                    >
+                                    <div className={`h-12 w-12 rounded-2xl border ${soft} flex items-center justify-center shrink-0`}>
                                         <Icon className="h-6 w-6" />
                                     </div>
 
@@ -253,10 +450,70 @@ Traduzione: ${chiamata}, con Premium non hai più scuse. Solo numeri.`,
                                                 `${soft} text-[rgb(var(--fg))] placeholder:text-[rgb(var(--muted-fg))]`,
                                             ].join(" ")}
                                         />
-                                        <p className={`mt-2 text-xs ${muted}`}>
-                                            Se lo lasci vuoto, userò un giudizio generico.
-                                        </p>
+                                        <p className={`mt-2 text-xs ${muted}`}>Se lo lasci vuoto, userò un giudizio generico.</p>
                                     </div>
+                                )}
+
+                                {/* SAMPLE: balance */}
+                                {current.sample === "balance" && (
+                                    <>
+                                        <SampleCard title="sample: entrate / uscite" soft={soft} muted={muted}>
+                                            <SampleIncomeExpenseTiles soft={soft} />
+                                            <SampleHint muted={muted}>
+                                                Tocca <b>Entrate</b> o <b>Uscite</b> per aggiungere un movimento.
+                                            </SampleHint>
+                                        </SampleCard>
+
+                                        {/* ✅ aggiunta obiettivo 30g */}
+                                        <SampleCard title="sample: obiettivo 30 giorni" soft={soft} muted={muted}>
+                                            <SampleGoal30d soft={soft} muted={muted} />
+                                            <SampleHint muted={muted}>
+                                                È gratuito e usa solo gli ultimi 30 giorni (solo passato).
+                                            </SampleHint>
+                                        </SampleCard>
+                                    </>
+                                )}
+
+                                {/* SAMPLE: how (add + future) */}
+                                {current.sample === "add" && (
+                                    <>
+                                        <SampleCard title="sample: aggiungi movimento" soft={soft} muted={muted}>
+                                            <div className={`rounded-3xl border p-4 ${soft}`}>
+                                                <SampleAddAction soft={soft} muted={muted} />
+                                            </div>
+                                            <SampleHint muted={muted}>
+                                                Puoi aggiungere da <b>Entrate/Uscite</b> o dal bottone <b>+</b>.
+                                            </SampleHint>
+                                        </SampleCard>
+
+                                        {/* ✅ aggiunta FUTURO */}
+                                        <SampleCard title="sample: movimenti futuri" soft={soft} muted={muted}>
+                                            <SampleFutureBadge soft={soft} muted={muted} />
+                                            <SampleHint muted={muted}>
+                                                Il badge <b>FUTURO</b> ti evita di confondere lista e statistiche.
+                                            </SampleHint>
+                                        </SampleCard>
+                                    </>
+                                )}
+
+                                {/* SAMPLE: insights */}
+                                {current.sample === "insights" && (
+                                    <SampleCard title="sample: grafico e categorie" soft={soft} muted={muted}>
+                                        <SamplePieAndList soft={soft} muted={muted} />
+                                        <SampleHint muted={muted}>
+                                            In Free vedi solo <b>ultimi 30 giorni</b>. Con Premium puoi fare <b>Tutto</b>.
+                                        </SampleHint>
+                                    </SampleCard>
+                                )}
+
+                                {/* SAMPLE: premium */}
+                                {current.sample === "premium" && (
+                                    <SampleCard title="sample: cosa sblocchi" soft={soft} muted={muted}>
+                                        <SamplePremium soft={soft} muted={muted} />
+                                        <SampleHint muted={muted}>
+                                            Premium = niente blur, ricerca completa, grafico su tutto, ricorrenti.
+                                        </SampleHint>
+                                    </SampleCard>
                                 )}
 
                                 {current.footerNote && (

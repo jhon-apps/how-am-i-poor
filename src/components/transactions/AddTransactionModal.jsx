@@ -1,18 +1,10 @@
 import { useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { X, Lock } from "lucide-react"
+import { X } from "lucide-react"
 
 import AdSlot from "@/components/ads/AdSlot"
 import usePremium from "@/hooks/usePremium"
 import useAdsConsent from "@/hooks/useAdsConsent"
-
-function formatISODate(d) {
-    try {
-        return new Date(d).toISOString().slice(0, 10)
-    } catch {
-        return new Date().toISOString().slice(0, 10)
-    }
-}
 
 function parseAmount(raw) {
     const s = String(raw ?? "")
@@ -27,10 +19,10 @@ function parseAmount(raw) {
 
 export default function AddTransactionModal({
                                                 isOpen = false,
-                                                transaction = null, // {id, type, description, amount, category, date}
+                                                transaction = null,
                                                 defaultType = "uscita", // "entrata" | "uscita"
-                                                prefill = null, // {type, description, amount, category, date}
-                                                recentCategories = [], // array string
+                                                prefill = null,
+                                                recentCategories = [],
                                                 onClose,
                                                 onSubmit,
                                                 isLoading = false,
@@ -40,7 +32,39 @@ export default function AddTransactionModal({
 
     const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), [])
 
-    // Normalizza type
+    // ✅ Scroll lock quando modale aperta
+    useEffect(() => {
+        if (!isOpen) return
+
+        const body = document.body
+        const html = document.documentElement
+
+        const prevBodyOverflow = body.style.overflow
+        const prevBodyPosition = body.style.position
+        const prevBodyTop = body.style.top
+        const prevBodyWidth = body.style.width
+        const prevHtmlOverscroll = html.style.overscrollBehaviorY
+
+        const scrollY = window.scrollY || 0
+
+        body.style.overflow = "hidden"
+        body.style.position = "fixed"
+        body.style.top = `-${scrollY}px`
+        body.style.width = "100%"
+        html.style.overscrollBehaviorY = "none"
+
+        return () => {
+            body.style.overflow = prevBodyOverflow
+            body.style.position = prevBodyPosition
+            body.style.top = prevBodyTop
+            body.style.width = prevBodyWidth
+            html.style.overscrollBehaviorY = prevHtmlOverscroll
+
+            const y = Math.abs(parseInt(body.style.top || "0", 10)) || scrollY
+            window.scrollTo(0, y)
+        }
+    }, [isOpen])
+
     const initialType = useMemo(() => {
         const t = prefill?.type ?? transaction?.type ?? defaultType
         return t === "entrata" ? "entrata" : "uscita"
@@ -64,7 +88,6 @@ export default function AddTransactionModal({
     const [category, setCategory] = useState(initial.category)
     const [date, setDate] = useState(initial.date)
 
-    // reset on open / when editing changes
     useEffect(() => {
         if (!isOpen) return
         setType(initial.type)
@@ -76,7 +99,6 @@ export default function AddTransactionModal({
 
     const isFuture = useMemo(() => {
         if (!date) return false
-        // date è YYYY-MM-DD => confronto string OK
         return date > todayISO
     }, [date, todayISO])
 
@@ -89,7 +111,6 @@ export default function AddTransactionModal({
         return true
     }, [description, amountNum, date, isLoading])
 
-    // categorie: recent + fallback "altro" (dedup)
     const categories = useMemo(() => {
         const out = []
         for (const c of recentCategories || []) {
@@ -102,9 +123,7 @@ export default function AddTransactionModal({
 
     const title = transaction?.id ? "Modifica movimento" : type === "entrata" ? "Nuova entrata" : "Nuova uscita"
 
-    const handleClose = () => {
-        onClose?.()
-    }
+    const handleClose = () => onClose?.()
 
     const handleSubmit = (e) => {
         e?.preventDefault?.()
@@ -131,7 +150,7 @@ export default function AddTransactionModal({
                     {/* backdrop */}
                     <div className="absolute inset-0 bg-black/60" onClick={handleClose} />
 
-                    {/* panel */}
+                    {/* panel wrapper */}
                     <div className="absolute inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4">
                         <motion.div
                             className="
@@ -148,6 +167,7 @@ export default function AddTransactionModal({
                             exit={{ y: 24, opacity: 0, scale: 0.98 }}
                             transition={{ type: "spring", stiffness: 420, damping: 34 }}
                             onClick={(e) => e.stopPropagation()}
+                            onTouchMove={(e) => e.stopPropagation()}
                         >
                             <div className="pt-[env(safe-area-inset-top)]" />
 
@@ -313,7 +333,7 @@ export default function AddTransactionModal({
                                     </button>
                                 </div>
 
-                                {/* ✅ Ads in fondo: solo free */}
+                                {/* Ads in fondo: solo free */}
                                 {showAds ? (
                                     <div className="mt-6">
                                         <AdSlot placement="modal-new-transaction-bottom" isPremium={isPremium} adsConsent={adsConsent} />

@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect, useRef } from "react"
-import { ArrowLeft, Plus, Repeat, Trash2, Pencil, Lock, X, AlarmClock } from "lucide-react"
+import { useMemo, useState, useEffect } from "react"
+import { Plus, Repeat, Trash2, Pencil, Lock, X, AlarmClock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import useRecurring from "@/hooks/useRecurring"
 import usePremium from "@/hooks/usePremium"
@@ -9,6 +9,8 @@ import BillingNotReadyDialog from "@/components/ui/BillingNotReadyDialog"
 import { APP_CONFIG } from "@/config/config"
 import { computeNextRecurringAt, debugScheduleRecurringSoon } from "@/services/recurringNotifications"
 
+import GlobalTopBar from "@/components/layout/GlobalTopBar"
+
 import {
     getCategoriesByType,
     getDefaultCategoryByType,
@@ -17,6 +19,7 @@ import {
 } from "@/entities/categories"
 
 const INTRO_KEY = "howamipoor:recurringIntroSeen:v1"
+const PREMIUM_EVENT = "haip:openPremium"
 
 function fmtEUR(n) {
     return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(Number(n) || 0)
@@ -203,7 +206,7 @@ function RecurringForm({ initial, onCancel, onSave }) {
     )
 }
 
-export default function Recurring({ onBack }) {
+export default function Recurring() {
     const { isPremium } = usePremium()
     const { items, add, update, remove, toggleActive, stats } = useRecurring()
 
@@ -230,48 +233,16 @@ export default function Recurring({ onBack }) {
     const [hubOpen, setHubOpen] = useState(false)
     const [billingNotReadyOpen, setBillingNotReadyOpen] = useState(false)
 
+    // ✅ premium via topbar/menu
+    useEffect(() => {
+        const onPremium = () => setUpsellOpen(true)
+        window.addEventListener(PREMIUM_EVENT, onPremium)
+        return () => window.removeEventListener(PREMIUM_EVENT, onPremium)
+    }, [])
+
     const surface = "rounded-3xl border bg-[rgb(var(--card))] border-[rgb(var(--border))]"
     const soft = "rounded-2xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
     const muted = "text-[rgb(var(--muted-fg))]"
-
-    // ✅ HEADER con safe-area top robusta
-    const header = (
-        <div
-            className="sticky top-0 z-40 border-b bg-[rgb(var(--card))] border-[rgb(var(--border))]"
-            style={{ paddingTop: "max(env(safe-area-inset-top), 24px)" }}
-        >
-            <div className="mx-auto max-w-3xl px-3 py-3 flex items-center gap-3">
-                <button
-                    onClick={onBack}
-                    className="h-10 w-10 rounded-2xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))] flex items-center justify-center"
-                    aria-label="Torna indietro"
-                    title="Torna indietro"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                </button>
-
-                <div className="min-w-0 flex-1">
-                    <h1 className="text-base font-extrabold tracking-tight">Ricorrenti</h1>
-                    <p className={`text-xs ${muted} truncate`}>
-                        {isPremium ? "Abbonamenti ed entrate fisse, tutto ordinato." : "Premium: ricorrenti + avvisi di scalo."}
-                    </p>
-                </div>
-
-                {isPremium && (
-                    <Button
-                        onClick={() => {
-                            setEditing(null)
-                            setShowForm(true)
-                        }}
-                        className="rounded-2xl"
-                    >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Nuova
-                    </Button>
-                )}
-            </div>
-        </div>
-    )
 
     const introBanner = showIntro ? (
         <div className={`${surface} p-4`}>
@@ -300,8 +271,8 @@ export default function Recurring({ onBack }) {
     if (!isPremium) {
         return (
             <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
-                {header}
-                {/* ✅ safe-area bottom */}
+                <GlobalTopBar page="Ricorrenti" />
+
                 <main className="mx-auto max-w-3xl px-3 py-6 space-y-4 pb-[calc(24px+env(safe-area-inset-bottom))]">
                     {introBanner}
 
@@ -324,8 +295,17 @@ export default function Recurring({ onBack }) {
                     </div>
                 </main>
 
-                <PremiumUpsellDialog open={upsellOpen} onClose={() => setUpsellOpen(false)} onConfirm={() => setHubOpen(true)} reason="premium" />
-                <PremiumHub open={hubOpen} onClose={() => setHubOpen(false)} onBillingNotReady={() => setBillingNotReadyOpen(true)} />
+                <PremiumUpsellDialog
+                    open={upsellOpen}
+                    onClose={() => setUpsellOpen(false)}
+                    onConfirm={() => setHubOpen(true)}
+                    reason="premium"
+                />
+                <PremiumHub
+                    open={hubOpen}
+                    onClose={() => setHubOpen(false)}
+                    onBillingNotReady={() => setBillingNotReadyOpen(true)}
+                />
                 <BillingNotReadyDialog open={billingNotReadyOpen} onClose={() => setBillingNotReadyOpen(false)} />
             </div>
         )
@@ -333,9 +313,8 @@ export default function Recurring({ onBack }) {
 
     return (
         <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
-            {header}
+            <GlobalTopBar page="Ricorrenti" />
 
-            {/* ✅ safe-area bottom */}
             <main className="mx-auto max-w-3xl px-3 py-6 space-y-4 pb-[calc(24px+env(safe-area-inset-bottom))]">
                 {introBanner}
 
@@ -350,7 +329,16 @@ export default function Recurring({ onBack }) {
                         </div>
                     </div>
 
-                    <p className={`text-xs ${muted}`}>Notifiche ricorrenti attive</p>
+                    <Button
+                        onClick={() => {
+                            setEditing(null)
+                            setShowForm(true)
+                        }}
+                        className="rounded-2xl"
+                    >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nuova
+                    </Button>
                 </div>
 
                 {items.length === 0 ? (
@@ -458,6 +446,17 @@ export default function Recurring({ onBack }) {
                     </div>
                 )}
             </main>
+
+            <PremiumUpsellDialog
+                open={upsellOpen}
+                onClose={() => setUpsellOpen(false)}
+                onConfirm={() => setHubOpen(true)}
+                reason="premium"
+            />
+            <PremiumHub open={hubOpen} onClose={() => setHubOpen(false)} onBillingNotReady={() => setBillingNotReadyOpen(true)} />
+            <BillingNotReadyDialog open={billingNotReadyOpen} onClose={() => setBillingNotReadyOpen(false)} />
+
+            <div className="pb-[env(safe-area-inset-bottom)]" />
         </div>
     )
 }
