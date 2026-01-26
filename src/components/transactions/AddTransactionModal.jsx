@@ -6,21 +6,37 @@ import AdSlot from "@/components/ads/AdSlot"
 import usePremium from "@/hooks/usePremium"
 import useAdsConsent from "@/hooks/useAdsConsent"
 
-function parseAmount(raw) {
+function normalizeAmountInput(raw) {
+    // mantiene solo cifre, spazi, punto, virgola, meno
+    // poi pulizia semplice: spazi via, virgola -> punto
     const s = String(raw ?? "")
         .trim()
         .replace(/\s/g, "")
         .replace(",", ".")
-    if (!s) return null
+    return s
+}
+
+function parseAmountStrict(raw) {
+    const s = normalizeAmountInput(raw)
+
+    if (!s) return { ok: false, value: null, reason: "empty" }
+
+    // rifiuta formati strani (es: ".", "-", "1..2", "1-2")
+    if (!/^-?\d+(\.\d{0,2})?$/.test(s)) return { ok: false, value: null, reason: "format" }
+
     const n = Number(s)
-    if (!Number.isFinite(n)) return null
-    return Math.round(n * 100) / 100
+    if (!Number.isFinite(n)) return { ok: false, value: null, reason: "nan" }
+
+    const v = Math.round(Math.abs(n) * 100) / 100
+    if (v <= 0) return { ok: false, value: null, reason: "zero" }
+
+    return { ok: true, value: v, reason: null }
 }
 
 export default function AddTransactionModal({
                                                 isOpen = false,
-                                                transaction = null,
-                                                defaultType = "uscita", // "entrata" | "uscita"
+                                                transaction = null, // {id, type, description, amount, category, date}
+                                                defaultType = "uscita",
                                                 prefill = null,
                                                 recentCategories = [],
                                                 onClose,
@@ -29,10 +45,9 @@ export default function AddTransactionModal({
                                             }) {
     const { isPremium } = usePremium()
     const { adsConsent } = useAdsConsent()
-
     const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), [])
 
-    // ✅ Scroll lock quando modale aperta
+    // Scroll lock
     useEffect(() => {
         if (!isOpen) return
 
@@ -76,7 +91,7 @@ export default function AddTransactionModal({
             id: transaction?.id ?? null,
             type: initialType,
             description: source.description ?? "",
-            amount: source.amount != null ? String(source.amount) : "",
+            amount: source.amount != null ? String(source.amount).replace(".", ",") : "",
             category: source.category ?? "altro",
             date: source.date ? String(source.date).slice(0, 10) : todayISO,
         }
@@ -88,6 +103,11 @@ export default function AddTransactionModal({
     const [category, setCategory] = useState(initial.category)
     const [date, setDate] = useState(initial.date)
 
+    // touched flags (per mostrare errori solo dopo interazione)
+    const [tDesc, setTDesc] = useState(false)
+    const [tAmount, setTAmount] = useState(false)
+    const [tDate, setTDate] = useState(false)
+
     useEffect(() => {
         if (!isOpen) return
         setType(initial.type)
@@ -95,21 +115,26 @@ export default function AddTransactionModal({
         setAmount(initial.amount)
         setCategory(initial.category)
         setDate(initial.date)
+
+        setTDesc(false)
+        setTAmount(false)
+        setTDate(false)
     }, [isOpen, initial])
 
-    const isFuture = useMemo(() => {
-        if (!date) return false
-        return date > todayISO
-    }, [date, todayISO])
+    const isFuture = useMemo(() => (date ? date > todayISO : false), [date, todayISO])
 
-    const amountNum = useMemo(() => parseAmount(amount), [amount])
+    const amountParsed = useMemo(() => parseAmountStrict(amount), [amount])
+
+    const descOk = useMemo(() => String(description || "").trim().length > 0, [description])
+    const dateOk = useMemo(() => !!date && String(date).length === 10, [date])
+
     const canSubmit = useMemo(() => {
         if (isLoading) return false
-        if (!description.trim()) return false
-        if (amountNum == null || amountNum <= 0) return false
-        if (!date) return false
+        if (!descOk) return false
+        if (!dateOk) return false
+        if (!amountParsed.ok) return false
         return true
-    }, [description, amountNum, date, isLoading])
+    }, [isLoading, descOk, dateOk, amountParsed.ok])
 
     const categories = useMemo(() => {
         const out = []
@@ -123,17 +148,25 @@ export default function AddTransactionModal({
 
     const title = transaction?.id ? "Modifica movimento" : type === "entrata" ? "Nuova entrata" : "Nuova uscita"
 
+    const showAds = !isPremium && adsConsent !== "denied"
+
     const handleClose = () => onClose?.()
 
     const handleSubmit = (e) => {
         e?.preventDefault?.()
+
+        // forza touched per mostrare errori se prova a salvare
+        setTDesc(true)
+        setTAmount(true)
+        setTDate(true)
+
         if (!canSubmit) return
 
         const payload = {
             ...(transaction?.id ? { id: transaction.id } : null),
             type,
-            description: description.trim(),
-            amount: amountNum,
+            description: String(description).trim(),
+            amount: amountParsed.value,
             category: category || "altro",
             date: String(date).slice(0, 10),
         }
@@ -141,16 +174,26 @@ export default function AddTransactionModal({
         onSubmit?.(payload)
     }
 
-    const showAds = !isPremium && adsConsent !== "denied"
+    const muted = "text-[rgb(var(--muted-fg))]"
+    const inputBase =
+        "h-12 w-full rounded-2xl border bg-[rgb(var(--card))]/70 px-4 text-[rgb(var(--fg))] outline-none placeholder:text-[rgb(var(--muted-fg))]"
+    const inputBorderOk = "border-[rgb(var(--border))]"
+    const inputBorderBad = "border-red-500/60"
+
+    const amountErrorText = useMemo(() => {
+        if (amountParsed.ok) return ""
+        if (amountParsed.reason === "empty") return "Inserisci un importo."
+        if (amountParsed.reason === "format") return "Formato non valido. Usa 12,34 oppure 12.34"
+        if (amountParsed.reason === "zero") return "L’importo deve essere > 0."
+        return "Importo non valido."
+    }, [amountParsed])
 
     return (
         <AnimatePresence>
             {isOpen ? (
                 <motion.div className="fixed inset-0 z-[80]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    {/* backdrop */}
                     <div className="absolute inset-0 bg-black/60" onClick={handleClose} />
 
-                    {/* panel wrapper */}
                     <div className="absolute inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4">
                         <motion.div
                             className="
@@ -173,7 +216,7 @@ export default function AddTransactionModal({
 
                             <div className="flex items-center justify-between gap-3 px-5 py-4">
                                 <div className="min-w-0">
-                                    <p className="text-xs text-[rgb(var(--muted-fg))]">HAIP</p>
+                                    <p className={`text-xs ${muted}`}>HAIP</p>
                                     <h2 className="text-lg font-extrabold tracking-tight truncate">{title}</h2>
                                 </div>
 
@@ -189,7 +232,6 @@ export default function AddTransactionModal({
                             </div>
 
                             <form onSubmit={handleSubmit} className="px-5 pb-5">
-                                {/* type */}
                                 <div className="mb-4 grid grid-cols-2 gap-2">
                                     <button
                                         type="button"
@@ -218,86 +260,79 @@ export default function AddTransactionModal({
                                 </div>
 
                                 <div className="grid gap-3">
-                                    {/* descrizione */}
                                     <label className="grid gap-1">
-                                        <span className="text-xs text-[rgb(var(--muted-fg))]">Descrizione</span>
+                                        <span className={`text-xs ${muted}`}>Descrizione</span>
                                         <input
                                             value={description}
                                             onChange={(e) => setDescription(e.target.value)}
+                                            onBlur={() => setTDesc(true)}
                                             placeholder="Es. affitto, kebab, multa…"
-                                            className="
-                        h-12 w-full rounded-2xl
-                        border border-[rgb(var(--border))]
-                        bg-[rgb(var(--card))]/70
-                        px-4 text-[rgb(var(--fg))]
-                        outline-none
-                        placeholder:text-[rgb(var(--muted-fg))]
-                      "
+                                            className={[
+                                                inputBase,
+                                                tDesc && !descOk ? inputBorderBad : inputBorderOk,
+                                            ].join(" ")}
                                             autoComplete="off"
                                         />
+                                        {tDesc && !descOk ? (
+                                            <p className="text-xs text-red-400">Inserisci una descrizione.</p>
+                                        ) : null}
                                     </label>
 
-                                    {/* amount + date */}
                                     <div className="grid grid-cols-2 gap-3">
                                         <label className="grid gap-1">
-                                            <span className="text-xs text-[rgb(var(--muted-fg))]">Importo</span>
+                                            <span className={`text-xs ${muted}`}>Importo</span>
                                             <input
                                                 value={amount}
-                                                onChange={(e) => setAmount(e.target.value)}
+                                                onChange={(e) => {
+                                                    setAmount(e.target.value)
+                                                }}
+                                                onBlur={() => setTAmount(true)}
                                                 placeholder="0,00"
-                                                className="
-                          h-12 w-full rounded-2xl
-                          border border-[rgb(var(--border))]
-                          bg-[rgb(var(--card))]/70
-                          px-4 text-[rgb(var(--fg))]
-                          outline-none
-                          placeholder:text-[rgb(var(--muted-fg))]
-                        "
+                                                className={[
+                                                    inputBase,
+                                                    tAmount && !amountParsed.ok ? inputBorderBad : inputBorderOk,
+                                                ].join(" ")}
                                                 inputMode="decimal"
                                                 autoComplete="off"
                                             />
+                                            {tAmount && !amountParsed.ok ? (
+                                                <p className="text-xs text-red-400">{amountErrorText}</p>
+                                            ) : null}
                                         </label>
 
                                         <label className="grid gap-1">
-                                            <span className="text-xs text-[rgb(var(--muted-fg))]">Data</span>
+                                            <span className={`text-xs ${muted}`}>Data</span>
                                             <input
                                                 type="date"
                                                 value={date}
                                                 onChange={(e) => setDate(e.target.value)}
-                                                className="
-                          h-12 w-full rounded-2xl
-                          border border-[rgb(var(--border))]
-                          bg-[rgb(var(--card))]/70
-                          px-4 text-[rgb(var(--fg))]
-                          outline-none
-                        "
+                                                onBlur={() => setTDate(true)}
+                                                className={[
+                                                    inputBase,
+                                                    tDate && !dateOk ? inputBorderBad : inputBorderOk,
+                                                ].join(" ")}
                                             />
+                                            {tDate && !dateOk ? (
+                                                <p className="text-xs text-red-400">Seleziona una data.</p>
+                                            ) : null}
                                         </label>
                                     </div>
 
-                                    {/* future message */}
                                     {isFuture ? (
                                         <div className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card-2))]/80 px-4 py-3">
-                                            <p className="text-xs text-[rgb(var(--muted-fg))]">
+                                            <p className={`text-xs ${muted}`}>
                                                 Nota: i movimenti nel <b>futuro</b> si vedono in lista, ma <b>non influenzano</b> grafici e statistiche (30 giorni)
                                                 finché non diventano passato.
                                             </p>
                                         </div>
                                     ) : null}
 
-                                    {/* category */}
                                     <label className="grid gap-1">
-                                        <span className="text-xs text-[rgb(var(--muted-fg))]">Categoria</span>
+                                        <span className={`text-xs ${muted}`}>Categoria</span>
                                         <select
                                             value={category}
                                             onChange={(e) => setCategory(e.target.value)}
-                                            className="
-                        h-12 w-full rounded-2xl
-                        border border-[rgb(var(--border))]
-                        bg-[rgb(var(--card))]/70
-                        px-4 text-[rgb(var(--fg))]
-                        outline-none
-                      "
+                                            className={[inputBase, inputBorderOk].join(" ")}
                                         >
                                             {categories.map((c) => (
                                                 <option key={c} value={c}>
@@ -308,7 +343,6 @@ export default function AddTransactionModal({
                                     </label>
                                 </div>
 
-                                {/* actions */}
                                 <div className="mt-5 grid grid-cols-2 gap-3">
                                     <button
                                         type="button"
@@ -333,7 +367,6 @@ export default function AddTransactionModal({
                                     </button>
                                 </div>
 
-                                {/* Ads in fondo: solo free */}
                                 {showAds ? (
                                     <div className="mt-6">
                                         <AdSlot placement="modal-new-transaction-bottom" isPremium={isPremium} adsConsent={adsConsent} />
