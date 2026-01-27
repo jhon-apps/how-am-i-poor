@@ -14,6 +14,8 @@ import Tutorial from "@/pages/Tutorial"
 import About from "@/pages/About"
 import DevTools from "@/pages/DevTools"
 
+import AdsConsentManager from "@/components/ads/AdsConsentManager"
+
 const ONBOARDING_KEY = "howamipoor:onboardingDone:v1"
 
 function readOnboardingDone() {
@@ -71,7 +73,6 @@ export default function App() {
     useNotificationActions()
 
     const [route, setRoute] = useState(getRouteFromHash())
-
     const homeCloseNewTxModalRef = useRef(null)
 
     const backArmedRef = useRef(false)
@@ -83,6 +84,7 @@ export default function App() {
         return () => window.removeEventListener("hashchange", onHash)
     }, [])
 
+    // onboarding gate
     useEffect(() => {
         const done = readOnboardingDone()
         if (!done && route !== "onboarding") {
@@ -90,6 +92,7 @@ export default function App() {
         }
     }, [route])
 
+    // Android back button behavior
     useEffect(() => {
         let remove = null
 
@@ -103,16 +106,19 @@ export default function App() {
                 const AppPlugin = app.App
 
                 const sub = AppPlugin.addListener("backButton", () => {
+                    // 1) se siamo in Home e la modale new tx è aperta -> chiudila
                     if (route === "home" && typeof homeCloseNewTxModalRef.current === "function") {
                         homeCloseNewTxModalRef.current()
                         return
                     }
 
+                    // 2) qualsiasi pagina ≠ home -> torna home
                     if (route !== "home") {
                         nav("/", { replace: true })
                         return
                     }
 
+                    // 3) siamo in home: doppio back -> minimize
                     if (backArmedRef.current) {
                         try {
                             AppPlugin.minimizeApp()
@@ -159,7 +165,7 @@ export default function App() {
             )
         }
 
-        if (route === "recurring") return <Recurring onBack={() => nav("/", { replace: true })} />
+        if (route === "recurring") return <Recurring />
         if (route === "settings") return <Settings onBack={() => nav("/", { replace: true })} />
 
         if (route === "insights") return <Insights />
@@ -179,5 +185,10 @@ export default function App() {
         )
     }, [route])
 
-    return view
+    return (
+        <>
+            {view}
+            <AdsConsentManager />
+        </>
+    )
 }

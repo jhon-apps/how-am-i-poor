@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Beaker, AlertTriangle, Download, Trash2, Crown } from "lucide-react"
+import { Beaker, AlertTriangle, Trash2, Crown } from "lucide-react"
 
 import GlobalTopBar from "@/components/layout/GlobalTopBar"
 import { Button } from "@/components/ui/button"
@@ -23,16 +23,17 @@ function safeParse(raw, fallback) {
     }
 }
 
-function downloadText(filename, text) {
-    const blob = new Blob([text], { type: "application/json;charset=utf-8" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
+// ✅ sblocca eventuali scroll-lock / overlay rimasti appesi (difensivo)
+function unlockUiNow() {
+    try {
+        document.body.style.overflow = ""
+        document.body.style.position = ""
+        document.body.style.top = ""
+        document.body.style.width = ""
+        document.documentElement.style.overscrollBehaviorY = ""
+    } catch {
+        // ignore
+    }
 }
 
 export default function DevTools() {
@@ -54,12 +55,25 @@ export default function DevTools() {
     }, [status])
 
     const setPremiumDev = (active) => {
+        // 1) unlock UI prima di cambiare stato (evita “schermo nero”)
+        unlockUiNow()
+
+        // 2) scrivi stato premium
         if (active) {
             localStorage.setItem(PREMIUM_KEY, JSON.stringify({ source: "dev", updatedAt: Date.now() }))
         } else {
             localStorage.setItem(PREMIUM_KEY, JSON.stringify({ source: "none", updatedAt: Date.now() }))
         }
+
+        // 3) notifica hook/components
         window.dispatchEvent(new CustomEvent(PREMIUM_CHANGED_EVENT))
+
+        // 4) feedback + torna Home (niente reload)
+        setStatus(active ? "Premium DEV attivato ✅" : "Premium disattivato ✅")
+        setTimeout(() => {
+            setStatus("")
+            window.location.hash = "#/"
+        }, 250)
     }
 
     const clearKeys = (keys) => {
@@ -74,9 +88,7 @@ export default function DevTools() {
                     <div className="max-w-2xl mx-auto space-y-4">
                         <div className={`${surface} p-5`}>
                             <p className="text-sm font-extrabold tracking-tight">Dev tools disabilitati</p>
-                            <p className={`mt-2 text-sm ${muted}`}>
-                                `DEV_TOOLS_ENABLED` è false. In release deve restare così.
-                            </p>
+                            <p className={`mt-2 text-sm ${muted}`}>`DEV_TOOLS_ENABLED` è false. In release deve restare così.</p>
                         </div>
                     </div>
                 </main>
@@ -109,7 +121,21 @@ export default function DevTools() {
 
                         {status ? <p className={`mt-2 text-xs ${muted}`}>{status}</p> : null}
 
-                        {/* SEED */}
+                        <div className="mt-4 grid gap-2">
+                            <p className="text-sm font-extrabold tracking-tight">Premium (DEV)</p>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button onClick={() => setPremiumDev(true)} className="inline-flex items-center gap-2">
+                                    <Crown className="h-4 w-4" />
+                                    Enable
+                                </Button>
+
+                                <Button variant="outline" onClick={() => setPremiumDev(false)} className="inline-flex items-center gap-2">
+                                    <Crown className="h-4 w-4" />
+                                    Disable
+                                </Button>
+                            </div>
+                        </div>
+
                         <div className="mt-4 grid gap-2">
                             <p className="text-sm font-extrabold tracking-tight">Seed</p>
                             <div className="flex flex-wrap items-center gap-2">
@@ -118,8 +144,8 @@ export default function DevTools() {
                                         setStatus("Genero seed 1200…")
                                         const { seedTransactions } = await import("@/dev/seedTransactions")
                                         const n = seedTransactions(1200)
-                                        setStatus(`Seed creato: ${n} movimenti. Reload…`)
-                                        setTimeout(() => location.reload(), 250)
+                                        setStatus(`Seed creato: ${n} movimenti.`)
+                                        setTimeout(() => setStatus(""), 1500)
                                     }}
                                 >
                                     Seed 1200
@@ -131,8 +157,8 @@ export default function DevTools() {
                                         setStatus("Genero seed 50…")
                                         const { seedTransactions } = await import("@/dev/seedTransactions")
                                         const n = seedTransactions(50)
-                                        setStatus(`Seed creato: ${n} movimenti. Reload…`)
-                                        setTimeout(() => location.reload(), 250)
+                                        setStatus(`Seed creato: ${n} movimenti.`)
+                                        setTimeout(() => setStatus(""), 1500)
                                     }}
                                 >
                                     Seed 50
@@ -140,58 +166,6 @@ export default function DevTools() {
                             </div>
                         </div>
 
-                        {/* PREMIUM DEV */}
-                        <div className="mt-4 grid gap-2">
-                            <p className="text-sm font-extrabold tracking-tight">Premium (DEV)</p>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <Button
-                                    onClick={() => {
-                                        setPremiumDev(true)
-                                        setStatus("Premium DEV attivato. Reload…")
-                                        setTimeout(() => location.reload(), 150)
-                                    }}
-                                    className="inline-flex items-center gap-2"
-                                >
-                                    <Crown className="h-4 w-4" />
-                                    Enable
-                                </Button>
-
-                                <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                        setPremiumDev(false)
-                                        setStatus("Premium disattivato. Reload…")
-                                        setTimeout(() => location.reload(), 150)
-                                    }}
-                                    className="inline-flex items-center gap-2"
-                                >
-                                    <Crown className="h-4 w-4" />
-                                    Disable
-                                </Button>
-                            </div>
-                        </div>
-
-                        {/* EXPORT */}
-                        <div className="mt-4 grid gap-2">
-                            <p className="text-sm font-extrabold tracking-tight">Export</p>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                        const raw = localStorage.getItem(TX_KEY) || "[]"
-                                        downloadText(`haip-transactions-${Date.now()}.json`, raw)
-                                        setStatus("Export transazioni scaricato.")
-                                        setTimeout(() => setStatus(""), 2000)
-                                    }}
-                                    className="inline-flex items-center gap-2"
-                                >
-                                    <Download className="h-4 w-4" />
-                                    Export movimenti JSON
-                                </Button>
-                            </div>
-                        </div>
-
-                        {/* CLEAR */}
                         <div className="mt-4 grid gap-2">
                             <p className="text-sm font-extrabold tracking-tight">Clear</p>
                             <div className="flex flex-wrap items-center gap-2">
@@ -199,8 +173,8 @@ export default function DevTools() {
                                     variant="outline"
                                     onClick={() => {
                                         clearKeys([TX_KEY])
-                                        setStatus("Movimenti cancellati. Reload…")
-                                        setTimeout(() => location.reload(), 200)
+                                        setStatus("Movimenti cancellati ✅")
+                                        setTimeout(() => setStatus(""), 1200)
                                     }}
                                     className="inline-flex items-center gap-2"
                                 >
@@ -212,8 +186,8 @@ export default function DevTools() {
                                     variant="outline"
                                     onClick={() => {
                                         clearKeys([REC_KEY])
-                                        setStatus("Ricorrenti cancellati. Reload…")
-                                        setTimeout(() => location.reload(), 200)
+                                        setStatus("Ricorrenti cancellati ✅")
+                                        setTimeout(() => setStatus(""), 1200)
                                     }}
                                     className="inline-flex items-center gap-2"
                                 >
@@ -225,8 +199,8 @@ export default function DevTools() {
                                     variant="outline"
                                     onClick={() => {
                                         clearKeys([SETTINGS_KEY, USER_KEY, PENDING_KEY])
-                                        setStatus("Settings/User/Pending cancellati. Reload…")
-                                        setTimeout(() => location.reload(), 200)
+                                        setStatus("Settings/User/Pending cancellati ✅")
+                                        setTimeout(() => setStatus(""), 1200)
                                     }}
                                     className="inline-flex items-center gap-2"
                                 >
@@ -238,8 +212,8 @@ export default function DevTools() {
                                     variant="outline"
                                     onClick={() => {
                                         clearKeys([ONBOARDING_KEY])
-                                        setStatus("Onboarding resettato (riparte).")
-                                        setTimeout(() => setStatus(""), 2000)
+                                        setStatus("Onboarding resettato ✅")
+                                        setTimeout(() => setStatus(""), 1200)
                                     }}
                                     className="inline-flex items-center gap-2"
                                 >
@@ -251,10 +225,12 @@ export default function DevTools() {
                             <div className="mt-2">
                                 <Button
                                     onClick={() => {
-                                        // wipe soft: solo chiavi HAIP note
                                         clearKeys([TX_KEY, REC_KEY, PREMIUM_KEY, SETTINGS_KEY, USER_KEY, PENDING_KEY, ONBOARDING_KEY])
-                                        setStatus("Wipe completo HAIP. Reload…")
-                                        setTimeout(() => location.reload(), 200)
+                                        setStatus("Wipe completo HAIP ✅")
+                                        setTimeout(() => {
+                                            setStatus("")
+                                            window.location.hash = "#/"
+                                        }, 300)
                                     }}
                                     className="inline-flex items-center gap-2"
                                 >
@@ -267,7 +243,7 @@ export default function DevTools() {
                         <div className="mt-4 flex items-start gap-2">
                             <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5" />
                             <p className={`text-xs ${muted}`}>
-                                Questi tool devono essere **spenti in release** (`DEV_TOOLS_ENABLED=false`).
+                                Questi tool devono essere spenti in release (`DEV_TOOLS_ENABLED=false`).
                             </p>
                         </div>
                     </div>

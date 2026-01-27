@@ -48,7 +48,7 @@ export default function About() {
     const [billingNotReadyOpen, setBillingNotReadyOpen] = useState(false)
 
     // ads consent
-    const { adsConsent, setAdsConsent } = useAdsConsent()
+    const { adsConsent, grantConsent, denyConsent } = useAdsConsent()
 
     // listen premium click
     useEffect(() => {
@@ -66,11 +66,7 @@ export default function About() {
     const soft = "rounded-2xl border bg-[rgb(var(--card-2))] border-[rgb(var(--border))]"
 
     const consentLabel =
-        adsConsent === "granted"
-            ? "Accettata"
-            : adsConsent === "denied"
-                ? "Rifiutata"
-                : "Non impostata"
+        adsConsent === "granted" ? "Personalizzata" : adsConsent === "denied" ? "Non personalizzata" : "Da scegliere"
 
     return (
         <div className="min-h-[100dvh] bg-[rgb(var(--bg))] text-[rgb(var(--fg))]">
@@ -86,7 +82,7 @@ export default function About() {
                         </p>
                     </div>
 
-                    {/* ✅ CONSENSO PUBBLICITÀ */}
+                    {/* CONSENSO PUBBLICITÀ (solo scelta personalizzazione) */}
                     <div className={surface + " p-5"}>
                         <div className="flex items-start justify-between gap-3">
                             <div className="flex items-start gap-3 min-w-0">
@@ -96,53 +92,45 @@ export default function About() {
                                 <div className="min-w-0">
                                     <p className="text-sm font-extrabold tracking-tight">Pubblicità</p>
                                     <p className={`mt-1 text-sm ${muted}`}>
-                                        Le ads sono leggere e solo per utenti FREE. Premium = zero ads.
+                                        Per utenti FREE la pubblicità è attiva. Qui scegli solo se può essere personalizzata.
+                                        Premium = zero pubblicità.
                                     </p>
                                 </div>
                             </div>
 
                             <span className={`shrink-0 text-xs ${muted}`}>
-                                Stato: <b className="text-[rgb(var(--fg))]">{consentLabel}</b>
-                            </span>
+                Stato: <b className="text-[rgb(var(--fg))]">{consentLabel}</b>
+              </span>
                         </div>
 
                         <div className="mt-4 grid gap-3">
                             <div className={`${soft} p-3`}>
                                 <p className={`text-xs ${muted}`}>
-                                    Puoi cambiare idea quando vuoi.
-                                    Se rifiuti, vedrai solo pubblicità non personalizzata (meno rilevante, stessa quantità).
+                                    <b>Accetta</b> = pubblicità personalizzata.<br />
+                                    <b>Rifiuta</b> = pubblicità non personalizzata (la pubblicità resta attiva).
                                 </p>
                             </div>
 
                             <div className="flex flex-wrap gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => setAdsConsent?.("granted")}
+                                    onClick={grantConsent}
                                     className="rounded-2xl border px-4 py-2 text-sm font-extrabold bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]"
                                 >
-                                    Accetta pubblicità
+                                    Accetta (personalizzata)
                                 </button>
 
                                 <button
                                     type="button"
-                                    onClick={() => setAdsConsent?.("denied")}
+                                    onClick={denyConsent}
                                     className="rounded-2xl border px-4 py-2 text-sm font-extrabold bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]"
                                 >
-                                    Rifiuta pubblicità
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => setAdsConsent?.("unset")}
-                                    className="rounded-2xl border px-4 py-2 text-sm font-extrabold bg-[rgb(var(--card))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card-2))]"
-                                    title="Rimuove la scelta salvata"
-                                >
-                                    Ripristina scelta
+                                    Rifiuta (non personalizzata)
                                 </button>
                             </div>
 
                             <p className={`text-xs ${muted}`}>
-                                Dettagli completi in Privacy Policy e GDPR.
+                                Puoi cambiare questa scelta in qualsiasi momento.
                             </p>
                         </div>
                     </div>
@@ -158,7 +146,7 @@ export default function About() {
                         <LinkCard
                             icon={Shield}
                             title="GDPR"
-                            desc="Informativa GDPR (diritti, trattamento, conservazione)."
+                            desc="Informativa GDPR (diritti, trattamento, pubblicità)."
                             href={GDPR_URL}
                         />
                     </div>

@@ -6,84 +6,64 @@
     <title>HAIP — Informativa GDPR</title>
     <meta name="description" content="Informativa GDPR per HAIP — How Am I Poor (JhonApps)." />
     <style>
-        :root {
-            --bg: #0b1220;
-            --card: #0f1a2e;
-            --text: #e7eefc;
-            --muted: #b6c2de;
-            --border: rgba(255,255,255,0.12);
-            --accent: #f59e0b;
-            --ok: #10b981;
+        :root{
+            --bg:#0b1220;--card:#0f1a2e;--text:#e7eefc;--muted:#b6c2de;--border:rgba(255,255,255,.12);
+            --accent:#f59e0b;--ok:#10b981;
         }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            background: radial-gradient(1200px 800px at 20% -10%, rgba(245,158,11,0.15), transparent 55%),
-            radial-gradient(900px 700px at 110% 0%, rgba(59,130,246,0.10), transparent 60%),
-            var(--bg);
-            color: var(--text);
-            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-            line-height: 1.5;
+        *{box-sizing:border-box}
+        body{
+            margin:0;
+            background:
+                    radial-gradient(1200px 800px at 20% -10%, rgba(245,158,11,0.15), transparent 55%),
+                    radial-gradient(900px 700px at 110% 0%, rgba(59,130,246,0.10), transparent 60%),
+                    var(--bg);
+            color:var(--text);
+            font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+            line-height:1.5;
         }
-        a { color: var(--accent); text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .wrap { max-width: 920px; margin: 0 auto; padding: 32px 16px 64px; }
-        .top {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 12px; margin-bottom: 16px;
+        a{color:var(--accent);text-decoration:none}
+        a:hover{text-decoration:underline}
+        .wrap{max-width:920px;margin:0 auto;padding:32px 16px 64px}
+        .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+        .brand{font-weight:900;letter-spacing:-.02em}
+        .badge{
+            border:1px solid var(--border);
+            background:rgba(255,255,255,.04);
+            padding:6px 10px;border-radius:999px;color:var(--muted);
+            font-size:12px;white-space:nowrap
         }
-        .brand { font-weight: 900; letter-spacing: -0.02em; }
-        .badge {
-            border: 1px solid var(--border);
-            background: rgba(255,255,255,0.04);
-            padding: 6px 10px;
-            border-radius: 999px;
-            color: var(--muted);
-            font-size: 12px;
-            white-space: nowrap;
+        .hero{
+            border:1px solid var(--border);
+            background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.03));
+            border-radius:24px;padding:22px 18px;margin:16px 0 18px;
         }
-        .hero {
-            border: 1px solid var(--border);
-            background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03));
-            border-radius: 24px;
-            padding: 22px 18px;
-            margin: 16px 0 18px;
+        h1{margin:0 0 6px;font-size:24px;letter-spacing:-.02em}
+        .sub{color:var(--muted);margin:0;font-size:14px}
+        .card{
+            border:1px solid var(--border);
+            background:rgba(255,255,255,.03);
+            border-radius:20px;padding:18px;margin:14px 0;
         }
-        h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: -0.02em; }
-        .sub { color: var(--muted); margin: 0; font-size: 14px; }
-        .card {
-            border: 1px solid var(--border);
-            background: rgba(255,255,255,0.03);
-            border-radius: 20px;
-            padding: 18px;
-            margin: 14px 0;
+        h2{margin:0 0 10px;font-size:16px;letter-spacing:-.01em}
+        p,li{color:var(--muted);font-size:14px}
+        ul{margin:10px 0 0;padding-left:18px}
+        .grid{display:grid;gap:14px;grid-template-columns:1fr}
+        @media (min-width:860px){.grid{grid-template-columns:1fr 1fr}}
+        .ok{display:inline-flex;align-items:center;gap:8px;color:var(--text);font-size:13px;margin-top:10px}
+        .dot{width:10px;height:10px;border-radius:999px;background:var(--ok);box-shadow:0 0 0 3px rgba(16,185,129,.14)}
+        .footer{margin-top:22px;color:var(--muted);font-size:12px}
+        code{
+            font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+            font-size:12px;color:var(--text);background:rgba(0,0,0,.25);
+            padding:2px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.10)
         }
-        h2 { margin: 0 0 10px; font-size: 16px; letter-spacing: -0.01em; }
-        p, li { color: var(--muted); font-size: 14px; }
-        ul { margin: 10px 0 0; padding-left: 18px; }
-        .grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
-        @media (min-width: 860px) {
-            .grid { grid-template-columns: 1fr 1fr; }
+        .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+        .small{font-size:12px}
+        .callout{
+            border:1px solid rgba(245,158,11,.35);
+            background:rgba(245,158,11,.08);
+            border-radius:16px;padding:12px 14px;margin-top:10px
         }
-        .ok {
-            display: inline-flex; align-items: center; gap: 8px;
-            color: var(--text);
-            font-size: 13px;
-            margin-top: 10px;
-        }
-        .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--ok); box-shadow: 0 0 0 3px rgba(16,185,129,0.14); }
-        .footer { margin-top: 22px; color: var(--muted); font-size: 12px; }
-        code {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            font-size: 12px;
-            color: var(--text);
-            background: rgba(0,0,0,0.25);
-            padding: 2px 6px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.10);
-        }
-        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-        .small { font-size: 12px; }
     </style>
 </head>
 <body>
@@ -98,7 +78,16 @@
         <p class="sub">
             Questa pagina spiega come HAIP tratta i dati personali in conformità al Regolamento (UE) 2016/679 (GDPR).
         </p>
-        <div class="ok"><span class="dot"></span><span><strong>Local-first:</strong> i tuoi dati restano sul tuo dispositivo.</span></div>
+        <div class="ok">
+            <span class="dot"></span>
+            <span><strong>Local-first:</strong> i tuoi dati restano sul tuo dispositivo.</span>
+        </div>
+        <div class="callout">
+            <p style="margin:0">
+                <strong>Pubblicità:</strong> per gli utenti FREE la pubblicità è sempre attiva.
+                La scelta riguarda solo se la pubblicità può essere <strong>personalizzata</strong> oppure <strong>non personalizzata</strong>.
+            </p>
+        </div>
     </div>
 
     <div class="grid">
@@ -114,7 +103,7 @@
         <div class="card">
             <h2>2) Dati trattati</h2>
             <p>
-                HAIP salva localmente sul dispositivo i dati inseriti dall’utente (es. movimenti, categorie, ricorrenti, impostazioni).
+                HAIP salva localmente sul dispositivo i dati inseriti dall’utente (es. movimenti, categorie, ricorrenti, impostazioni, obiettivi).
                 Esempi di chiavi locali:
             </p>
             <ul>
@@ -122,15 +111,20 @@
                 <li><code>howamipoor:recurring:v1</code></li>
                 <li><code>howamipoor:settings:v1</code></li>
                 <li><code>howamipoor:user:v1</code></li>
+                <li><code>howamipoor:goal:v1</code></li>
             </ul>
         </div>
 
         <div class="card">
             <h2>3) Finalità e base giuridica</h2>
             <p>
-                I dati sono trattati esclusivamente per fornire le funzionalità dell’app (gestione spese, grafici, notifiche).
-                Base giuridica: <strong>esecuzione del servizio</strong> richiesto dall’utente (art. 6(1)(b) GDPR) e, dove applicabile,
-                <strong>consenso</strong> per eventuali tecnologie di terze parti (es. pubblicità) (art. 6(1)(a) GDPR).
+                I dati sono trattati esclusivamente per fornire le funzionalità dell’app (gestione spese, grafici, notifiche, ricorrenti).
+            </p>
+            <p>
+                Base giuridica:
+                <strong>esecuzione del servizio</strong> richiesto dall’utente (art. 6(1)(b) GDPR) e,
+                per la scelta sulla <strong>personalizzazione degli annunci</strong>,
+                <strong>consenso</strong> (art. 6(1)(a) GDPR), ove richiesto dal framework pubblicitario adottato.
             </p>
         </div>
 
@@ -143,25 +137,34 @@
         </div>
 
         <div class="card">
-            <h2>5) Condivisione e trasferimenti</h2>
+            <h2>5) Pubblicità e terze parti</h2>
             <p>
                 HAIP non invia i tuoi movimenti a server di JhonApps.
                 Se l’app mostra annunci, i fornitori pubblicitari possono trattare dati tecnici secondo le loro policy.
-                In quel caso, l’utente può gestire il consenso dall’app (dove previsto).
+            </p>
+            <p>
+                <strong>Utenti FREE:</strong> la pubblicità è sempre attiva.<br />
+                L’utente deve scegliere tra:
+            </p>
+            <ul>
+                <li><strong>Pubblicità personalizzata</strong> (consenso alla personalizzazione)</li>
+                <li><strong>Pubblicità non personalizzata</strong> (rifiuto della personalizzazione)</li>
+            </ul>
+            <p class="small">
+                Il rifiuto della personalizzazione <strong>non disattiva</strong> la pubblicità: rende gli annunci non personalizzati.
+                La preferenza può essere modificata in qualunque momento dall’app.
             </p>
         </div>
 
         <div class="card">
             <h2>6) Diritti dell’interessato</h2>
-            <p>
-                Hai diritto di:
-            </p>
+            <p>Hai diritto di:</p>
             <ul>
                 <li>Accedere ai dati</li>
                 <li>Rettificare o cancellare i dati</li>
                 <li>Limitare o opporti al trattamento (nei casi previsti)</li>
                 <li>Portabilità (nei limiti applicabili)</li>
-                <li>Revocare il consenso (se usato)</li>
+                <li>Revocare/modificare il consenso alla personalizzazione degli annunci (se applicabile)</li>
                 <li>Presentare reclamo al Garante Privacy</li>
             </ul>
             <p class="small">
@@ -195,7 +198,7 @@
     </div>
 
     <div class="footer">
-        Ultimo aggiornamento: <strong>2026-01-24</strong> ·
+        Ultimo aggiornamento: <strong>2026-01-27</strong> ·
         <a href="./privacy.html">Privacy Policy</a>
     </div>
 </div>

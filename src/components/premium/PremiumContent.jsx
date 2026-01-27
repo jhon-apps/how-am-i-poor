@@ -3,6 +3,18 @@ import { BadgeCheck, Lock, Search, CalendarClock, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import usePremium from "@/hooks/usePremium"
 
+function unlockUiNow() {
+    try {
+        document.body.style.overflow = ""
+        document.body.style.position = ""
+        document.body.style.top = ""
+        document.body.style.width = ""
+        document.documentElement.style.overscrollBehaviorY = ""
+    } catch {
+        // ignore
+    }
+}
+
 export default function PremiumContent({ mode = "modal", onClose, onBillingNotReady }) {
     const { isPremium, requestPremium, meta, disablePremium } = usePremium()
 
@@ -44,6 +56,7 @@ export default function PremiumContent({ mode = "modal", onClose, onBillingNotRe
     const muted = "text-[rgb(var(--muted-fg))]"
 
     const handleClose = () => {
+        unlockUiNow()
         if (mode === "page") {
             window.location.hash = "#/"
             return
@@ -53,15 +66,28 @@ export default function PremiumContent({ mode = "modal", onClose, onBillingNotRe
 
     const handleSubscribe = () => {
         const res = requestPremium()
-
         if (res?.ok) {
             handleClose()
             return
         }
-
-        // billing non pronto / richiesto
         handleClose()
         setTimeout(() => onBillingNotReady?.(), 0)
+    }
+
+    const handleDisableDev = () => {
+        // ✅ 1) sopprimi gate ads per evitare overlay stacking su mobile
+        window.__haipSuppressAdsGateUntil = Date.now() + 800
+
+        // ✅ 2) chiudi la modale premium PRIMA di cambiare stato premium
+        handleClose()
+
+        // ✅ 3) cambia premium nel tick successivo (dopo un frame)
+        setTimeout(() => {
+            unlockUiNow()
+            disablePremium?.()
+            // piccolo extra unlock
+            setTimeout(() => unlockUiNow(), 0)
+        }, 0)
     }
 
     const wrapClass =
@@ -131,7 +157,7 @@ export default function PremiumContent({ mode = "modal", onClose, onBillingNotRe
 
                         {isPremium ? (
                             <span className="text-emerald-700 font-semibold">
-                Premium attivo ✓ <span className={`ml-2 text-xs ${muted}`}>({meta.source})</span>
+                Premium attivo ✓ <span className={`ml-2 text-xs ${muted}`}>({meta?.source})</span>
               </span>
                         ) : (
                             <Button onClick={handleSubscribe}>
@@ -142,7 +168,7 @@ export default function PremiumContent({ mode = "modal", onClose, onBillingNotRe
 
                     {meta?.canSimulate && isPremium && (
                         <div className="flex justify-end">
-                            <Button variant="outline" onClick={disablePremium}>
+                            <Button variant="outline" onClick={handleDisableDev}>
                                 Disattiva Premium (DEV)
                             </Button>
                         </div>
