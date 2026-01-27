@@ -57,7 +57,6 @@ function RecurringForm({ initial, onCancel, onSave }) {
     const [amount, setAmount] = useState(initial?.amount != null ? String(initial.amount).replace(".", ",") : "")
     const [day, setDay] = useState(initial?.schedule?.day ?? 1)
 
-    // touched flags
     const [tDesc, setTDesc] = useState(false)
     const [tAmount, setTAmount] = useState(false)
     const [tDay, setTDay] = useState(false)

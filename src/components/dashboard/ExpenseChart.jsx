@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { ChevronDown, ChevronUp } from "lucide-react"
 
@@ -26,6 +26,13 @@ function cap(s) {
 
 export default function ExpenseChart({ transactions = [] }) {
     const [detailsOpen, setDetailsOpen] = useState(true)
+
+    // ✅ Recharts fix: render solo dopo mount (evita width/height -1 su mobile)
+    const [ready, setReady] = useState(false)
+    useEffect(() => {
+        const t = setTimeout(() => setReady(true), 0)
+        return () => clearTimeout(t)
+    }, [])
 
     const expenses = useMemo(() => transactions.filter((t) => t.type === "uscita"), [transactions])
 
@@ -72,80 +79,89 @@ export default function ExpenseChart({ transactions = [] }) {
                 </button>
             </div>
 
-            <div className="mt-4 min-h-[16rem] h-64">
-                {total <= 0 ? (
-                    <div className={`h-full rounded-2xl border border-dashed flex flex-col items-center justify-center text-center ${sub}`}>
-                        <div className={`h-10 w-10 rounded-2xl border flex items-center justify-center ${sub}`}>
-                            <span>🥧</span>
+            {/* ✅ wrapper con altezza garantita (hard) */}
+            <div className="mt-4 w-full rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3">
+                <div className="w-full min-h-[280px] h-[280px]">
+                    {total <= 0 ? (
+                        <div className={`h-full rounded-2xl border border-dashed flex flex-col items-center justify-center text-center ${sub}`}>
+                            <div className={`h-10 w-10 rounded-2xl border flex items-center justify-center ${sub}`}>
+                                <span>🥧</span>
+                            </div>
+                            <p className="mt-3 text-sm font-medium">Nessuna spesa registrata</p>
+                            <p className={`text-xs ${muted}`}>Prova con “uscita → alimentari → 12€” 😉</p>
                         </div>
-                        <p className="mt-3 text-sm font-medium">Nessuna spesa registrata</p>
-                        <p className={`text-xs ${muted}`}>Prova con “uscita → alimentari → 12€” 😉</p>
-                    </div>
-                ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Tooltip
-                                cursor={false}
-                                wrapperStyle={{ zIndex: 9999 }}
-                                content={({ active, payload }) => {
-                                    if (!active || !payload?.length) return null
+                    ) : !ready ? (
+                        // ✅ fallback mentre il layout non è ancora calcolabile
+                        <div className={`h-full rounded-2xl border border-dashed flex flex-col items-center justify-center text-center ${sub}`}>
+                            <p className={`text-sm ${muted}`}>Carico il grafico…</p>
+                        </div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Tooltip
+                                    cursor={false}
+                                    wrapperStyle={{ zIndex: 9999 }}
+                                    content={({ active, payload }) => {
+                                        if (!active || !payload?.length) return null
 
-                                    const item = payload[0]
-                                    const name = item?.name ?? item?.payload?.name ?? ""
-                                    const value = Number(item?.value ?? item?.payload?.value ?? 0)
-                                    const pct = total > 0 ? (value / total) * 100 : 0
+                                        const item = payload[0]
+                                        const name = item?.name ?? item?.payload?.name ?? ""
+                                        const value = Number(item?.value ?? item?.payload?.value ?? 0)
+                                        const pct = total > 0 ? (value / total) * 100 : 0
 
-                                    const dark = isDark()
+                                        const dark = isDark()
 
-                                    return (
-                                        <div
-                                            style={{
-                                                backgroundColor: dark ? "rgba(2,6,23,.95)" : "rgba(255,255,255,.98)",
-                                                border: dark ? "1px solid rgba(148,163,184,.25)" : "1px solid rgba(226,232,240,1)",
-                                                borderRadius: 12,
-                                                padding: "10px 12px",
-                                                color: dark ? "#e2e8f0" : "#0f172a",
-                                                boxShadow: "0 10px 30px rgba(0,0,0,.20)",
-                                                minWidth: 180,
-                                            }}
-                                        >
-                                            <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>Categoria</div>
-                                            <div style={{ fontSize: 14, fontWeight: 800 }}>{cap(name)}</div>
+                                        return (
+                                            <div
+                                                style={{
+                                                    backgroundColor: dark ? "rgba(2,6,23,.95)" : "rgba(255,255,255,.98)",
+                                                    border: dark ? "1px solid rgba(148,163,184,.25)" : "1px solid rgba(226,232,240,1)",
+                                                    borderRadius: 12,
+                                                    padding: "10px 12px",
+                                                    color: dark ? "#e2e8f0" : "#0f172a",
+                                                    boxShadow: "0 10px 30px rgba(0,0,0,.20)",
+                                                    minWidth: 180,
+                                                }}
+                                            >
+                                                <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4 }}>Categoria</div>
+                                                <div style={{ fontSize: 14, fontWeight: 800 }}>{cap(name)}</div>
 
-                                            <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", gap: 12 }}>
-                                                <span style={{ fontSize: 12, opacity: 0.8 }}>Totale</span>
-                                                <span style={{ fontSize: 14, fontWeight: 800 }}>
-                          {value.toLocaleString("it-IT", { style: "currency", currency: "EUR" })}
-                        </span>
+                                                <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between", gap: 12 }}>
+                                                    <span style={{ fontSize: 12, opacity: 0.8 }}>Totale</span>
+                                                    <span style={{ fontSize: 14, fontWeight: 800 }}>
+                            {value.toLocaleString("it-IT", { style: "currency", currency: "EUR" })}
+                          </span>
+                                                </div>
+
+                                                <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", gap: 12 }}>
+                                                    <span style={{ fontSize: 12, opacity: 0.8 }}>Percentuale</span>
+                                                    <span style={{ fontSize: 13, fontWeight: 800 }}>{pct.toFixed(1)}%</span>
+                                                </div>
                                             </div>
+                                        )
+                                    }}
+                                />
 
-                                            <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", gap: 12 }}>
-                                                <span style={{ fontSize: 12, opacity: 0.8 }}>Percentuale</span>
-                                                <span style={{ fontSize: 13, fontWeight: 800 }}>{pct.toFixed(1)}%</span>
-                                            </div>
-                                        </div>
-                                    )
-                                }}
-                            />
-
-                            {/* ✅ PIE PIENA: niente innerRadius */}
-                            <Pie
-                                data={data}
-                                dataKey="value"
-                                nameKey="name"
-                                outerRadius={100}
-                                paddingAngle={2}
-                                isAnimationActive={false}
-                            >
-                                {data.map((entry) => (
-                                    <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || "#94A3B8"} />
-                                ))}
-                            </Pie>
-                        </PieChart>
-                    </ResponsiveContainer>
-                )}
+                                {/* ✅ PIE PIENA */}
+                                <Pie
+                                    data={data}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    outerRadius={100}
+                                    paddingAngle={2}
+                                    isAnimationActive={false}
+                                >
+                                    {data.map((entry) => (
+                                        <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || "#94A3B8"} />
+                                    ))}
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+                    )}
+                </div>
             </div>
 
+            {/* dettagli sempre ordinati (toggle) */}
             {detailsOpen && total > 0 ? (
                 <div className={`mt-5 rounded-3xl border p-4 ${sub}`}>
                     <div className="flex items-center justify-between gap-3">
